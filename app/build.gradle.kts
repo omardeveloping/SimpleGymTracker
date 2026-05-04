@@ -61,10 +61,10 @@ dependencies {
     val nav_version = "2.8.9"
     implementation("androidx.navigation:navigation-compose:$nav_version")
 
-    // Vico Charts
-    val vico_version = "2.1.0"
-    implementation("com.patrykandpatrick.vico:vico-compose:$vico_version")
-    implementation("com.patrykandpatrick.vico:vico-compose-m3:$vico_version")
+    // Vico Charts - TODO: Update to correct version when implementing charts
+    // val vico_version = "2.0.0"
+    // implementation("com.patrykandpatrick.vico:vico-compose:$vico_version")
+    // implementation("com.patrykandpatrick.vico:vico-compose-m3:$vico_version")
 
     val room_version = "2.8.4"
     implementation("androidx.room:room-runtime:$room_version")
