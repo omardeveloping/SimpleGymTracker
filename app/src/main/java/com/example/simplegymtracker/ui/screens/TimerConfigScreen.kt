@@ -29,7 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.RestTimerAccent
 import com.example.simplegymtracker.ui.theme.RestTimerBg
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,23 @@ fun TimerConfigScreen(
     var setRestTime by remember { mutableStateOf("60") }
     var exerciseRestTime by remember { mutableStateOf("120") }
     var isTimerRunning by remember { mutableStateOf(false) }
-    var remainingTime by remember { mutableStateOf(0) }
+    var remainingTime by remember { mutableIntStateOf(0) }
+    var timerLabel by remember { mutableStateOf("Rest between sets") }
+
+    // Countdown logic
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning && remainingTime > 0) {
+            while (remainingTime > 0 && isTimerRunning) {
+                delay(1000L)
+                if (isTimerRunning) {
+                    remainingTime -= 1
+                }
+            }
+            if (remainingTime <= 0) {
+                isTimerRunning = false
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,7 +99,7 @@ fun TimerConfigScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(220.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = RestTimerBg
@@ -100,16 +119,22 @@ fun TimerConfigScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (isTimerRunning) formatTime(remainingTime) else "00:00",
-                            fontSize = 48.sp,
+                            text = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
+                            fontSize = 56.sp,
                             fontWeight = FontWeight.Bold,
                             color = RestTimerAccent
                         )
-                        if (!isTimerRunning) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = timerLabel,
+                            fontSize = 14.sp,
+                            color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                        )
+                        if (!isTimerRunning && remainingTime == 0) {
                             Text(
                                 text = "Tap Start to begin",
-                                fontSize = 14.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                                fontSize = 13.sp,
+                                color = androidx.compose.ui.graphics.Color(0xFF787671)
                             )
                         }
                     }
@@ -124,20 +149,45 @@ fun TimerConfigScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 TimerButton(
-                    label = "Start",
+                    label = "Start Set Rest",
                     onClick = {
-                        isTimerRunning = true
+                        timerLabel = "Rest between sets"
                         remainingTime = setRestTime.toIntOrNull() ?: 60
+                        isTimerRunning = true
                     },
                     modifier = Modifier.weight(1f)
                 )
                 TimerButton(
-                    label = "Stop",
-                    onClick = { isTimerRunning = false },
-                    modifier = Modifier.weight(1f),
-                    isSecondary = true
+                    label = "Start Exercise Rest",
+                    onClick = {
+                        timerLabel = "Rest between exercises"
+                        remainingTime = exerciseRestTime.toIntOrNull() ?: 120
+                        isTimerRunning = true
+                    },
+                    modifier = Modifier.weight(1f)
                 )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TimerButton(
+                label = if (isTimerRunning) "Pause" else "Resume",
+                onClick = { isTimerRunning = !isTimerRunning },
+                modifier = Modifier.fillMaxWidth(),
+                isSecondary = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TimerButton(
+                label = "Reset",
+                onClick = {
+                    isTimerRunning = false
+                    remainingTime = 0
+                },
+                modifier = Modifier.fillMaxWidth(),
+                isSecondary = true
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
