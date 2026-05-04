@@ -66,6 +66,7 @@ import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
 @Composable
 fun ActiveWorkoutScreen(
     sessionId: Long,
+    selectedExerciseId: Int? = null,
     workoutViewModelFactory: WorkoutViewModelFactory,
     exerciseViewModelFactory: ExerciseViewModelFactory,
     onAddExercise: () -> Unit,
@@ -74,6 +75,13 @@ fun ActiveWorkoutScreen(
 ) {
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val exerciseViewModel: ExerciseViewModel = viewModel(factory = exerciseViewModelFactory)
+
+    // Handle selected exercise from ExerciseSelector
+    LaunchedEffect(selectedExerciseId) {
+        if (selectedExerciseId != null && selectedExerciseId != -1) {
+            workoutViewModel.addExerciseToSession(sessionId.toInt(), selectedExerciseId)
+        }
+    }
 
     val logs by workoutViewModel.getLogsForSession(sessionId.toInt()).collectAsState(initial = emptyList())
     val exercises by exerciseViewModel.allExercises.collectAsState()
