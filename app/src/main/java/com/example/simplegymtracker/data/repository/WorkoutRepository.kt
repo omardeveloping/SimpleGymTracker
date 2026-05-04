@@ -38,6 +38,10 @@ class WorkoutRepository(
         return logDao.insert(log)
     }
 
+    suspend fun deleteExerciseLog(log: ExerciseLog) {
+        logDao.delete(log)
+    }
+
     // --- Set Operations ---
     fun getSetsForLog(logId: Int): Flow<List<Set>> {
         return setDao.getSetsForLog(logId)

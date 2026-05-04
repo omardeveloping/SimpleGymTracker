@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -88,11 +89,8 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = {
                     // Start a new session with userId = 1 (default user)
-                    workoutViewModel.startNewSession(userId = 1)
-                    // Get the latest session and navigate
-                    val latestSession = sessions.firstOrNull()
-                    if (latestSession != null) {
-                        onStartWorkout(latestSession.sessionId.toLong())
+                    workoutViewModel.startNewSession(userId = 1) { sessionId ->
+                        onStartWorkout(sessionId)
                     }
                 },
                 containerColor = ElectricBlue,
@@ -340,9 +338,6 @@ fun SessionCard(
         }
     }
 }
-
-@Composable
-private fun Spacer(modifier: Modifier) = androidx.compose.foundation.layout.Spacer(modifier)
 
 private val Slate = androidx.compose.ui.graphics.Color(0xFF5D5B54)
 

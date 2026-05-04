@@ -23,13 +23,14 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         )
 
     // --- Session Actions ---
-    fun startNewSession(userId: Int) {
+    fun startNewSession(userId: Int, onSessionCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val newSession = Session(
                 userId = userId,
                 date = System.currentTimeMillis()
             )
-            repository.startSession(newSession)
+            val sessionId = repository.startSession(newSession)
+            onSessionCreated(sessionId)
         }
     }
 
@@ -41,6 +42,12 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
 
     // --- Exercise Log Actions ---
     fun getLogsForSession(sessionId: Int) = repository.getLogsForSession(sessionId)
+
+    fun deleteLog(log: ExerciseLog) {
+        viewModelScope.launch {
+            repository.deleteExerciseLog(log)
+        }
+    }
 
     fun addExerciseToSession(sessionId: Int, exerciseId: Int) {
         viewModelScope.launch {
