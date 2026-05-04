@@ -65,10 +65,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Vico Charts - TODO: Update to correct version when implementing charts
-    // val vico_version = "2.0.0"
-    // implementation("com.patrykandpatrick.vico:vico-compose:$vico_version")
-    // implementation("com.patrykandpatrick.vico:vico-compose-m3:$vico_version")
+    // Vico Charts
+    val vico_version = "1.14.0"
+    implementation("com.patrykandpatrick.vico:vico-compose:$vico_version")
+    implementation("com.patrykandpatrick.vico:vico-compose-m3:$vico_version")
 
     val room_version = "2.8.4"
     implementation("androidx.room:room-runtime:$room_version")
