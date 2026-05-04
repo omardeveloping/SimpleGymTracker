@@ -43,7 +43,6 @@ import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
-import com.patrykandpatrick.vico.compose.m3.style.m3ChartStyle
 import com.patrykandpatrick.vico.compose.style.ProvideChartStyle
 import com.patrykandpatrick.vico.core.entry.FloatEntry
 import com.patrykandpatrick.vico.core.entry.entryModelOf
@@ -67,7 +66,6 @@ fun ProgressChartScreen(
             entryModelOf()
         } else {
             val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-            val displayFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
 
             // Group by day and count sessions
             val sessionsByDay = sessions.groupBy {
@@ -87,8 +85,6 @@ fun ProgressChartScreen(
 
     // Calculate stats
     val totalWorkouts = sessions.size
-    val totalSets = 0 // Would need to aggregate all sets
-    val totalVolume = 0f // Would need to aggregate weight * reps
 
     Scaffold(
         topBar = {
@@ -154,7 +150,7 @@ fun ProgressChartScreen(
                     }
                 } else {
                     // Vico Chart
-                    ProvideChartStyle(m3ChartStyle()) {
+                    ProvideChartStyle {
                         Chart(
                             chart = lineChart(),
                             model = chartModel,

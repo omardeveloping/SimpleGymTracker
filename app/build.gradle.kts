@@ -67,8 +67,8 @@ dependencies {
 
     // Vico Charts
     val vico_version = "1.14.0"
-    implementation("com.patrykandpatrick.vico:vico-compose:$vico_version")
-    implementation("com.patrykandpatrick.vico:vico-compose-m3:$vico_version")
+    implementation("com.patrykandpatrick.vico:compose:$vico_version")
+    implementation("com.patrykandpatrick.vico:compose-m3:$vico_version")
 
     val room_version = "2.8.4"
     implementation("androidx.room:room-runtime:$room_version")
