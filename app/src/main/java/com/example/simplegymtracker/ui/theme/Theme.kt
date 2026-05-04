@@ -12,32 +12,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = ElectricBlue,
+    secondary = Slate,
+    tertiary = CardTintMint,
+    background = Ink,
+    surface = Charcoal,
+    onPrimary = CanvasWhite,
+    onSecondary = CanvasWhite,
+    onTertiary = InkDeep,
+    onBackground = CanvasWhite,
+    onSurface = CanvasWhite
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = ElectricBlue,
+    secondary = Slate,
+    tertiary = CardTintMint,
+    background = SurfaceLight,
+    surface = CanvasWhite,
+    onPrimary = CanvasWhite,
+    onSecondary = CanvasWhite,
+    onTertiary = InkDeep,
+    onBackground = Ink,
+    onSurface = Ink
 )
 
 @Composable
 fun SimpleGymTrackerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -45,7 +48,6 @@ fun SimpleGymTrackerTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
