@@ -33,7 +33,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getBy
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +72,7 @@ fun HomeScreen(
 
     val sessions by workoutViewModel.allSessions.collectAsState()
     val recentSessions = sessions.take(3)
+    var isStartingSession by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -88,9 +92,12 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
+                    if (isStartingSession) return@FloatingActionButton
+                    isStartingSession = true
                     // Start a new session with userId = 1 (default user)
                     workoutViewModel.startNewSession(userId = 1) { sessionId ->
                         onStartWorkout(sessionId)
+                        isStartingSession = false
                     }
                 },
                 containerColor = ElectricBlue,

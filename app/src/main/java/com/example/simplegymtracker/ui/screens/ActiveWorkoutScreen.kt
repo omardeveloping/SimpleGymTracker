@@ -30,6 +30,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -362,16 +363,18 @@ fun AddSetForm(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = weight,
-                onValueChange = { weight = it },
+                onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*\$"))) weight = it },
                 label = { Text("Weight (kg)") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                 modifier = Modifier.weight(1f)
             )
             OutlinedTextField(
                 value = reps,
-                onValueChange = { reps = it },
+                onValueChange = { if (it.matches(Regex("^\\d*\$"))) reps = it },
                 label = { Text("Reps") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -403,15 +406,16 @@ fun AddSetForm(
                     .padding(8.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
+            val isValid = (weight.toFloatOrNull() ?: 0f) > 0f && (reps.toIntOrNull() ?: 0) > 0
             Text(
                 text = "Add Set",
-                color = ElectricBlue,
+                color = if (isValid) ElectricBlue else androidx.compose.ui.graphics.Color(0xFFBBB8B1),
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
-                    .clickable {
+                    .clickable(enabled = isValid) {
                         val w = weight.toFloatOrNull() ?: 0f
                         val r = reps.toIntOrNull() ?: 0
-                        if (w > 0 && r > 0) onAdd(w, r, type)
+                        onAdd(w, r, type)
                     }
                     .padding(8.dp)
             )

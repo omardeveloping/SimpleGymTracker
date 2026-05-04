@@ -133,9 +133,12 @@ fun AppNavHost(
                 ?.getString("sessionId")
                 ?.toLongOrNull() ?: 0L
 
+            val selectedExerciseId = backStackEntry.savedStateHandle.get<Int>("selected_exercise_id") ?: -1
+            backStackEntry.savedStateHandle["selected_exercise_id"] = -1
+
             ActiveWorkoutScreen(
                 sessionId = sessionId,
-                selectedExerciseId = backStackEntry.savedStateHandle.get<Int>("selected_exercise_id") ?: -1,
+                selectedExerciseId = selectedExerciseId,
                 workoutViewModelFactory = workoutViewModelFactory,
                 exerciseViewModelFactory = exerciseViewModelFactory,
                 onAddExercise = {
