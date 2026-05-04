@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.simplegymtracker.data.AppDatabase
+import com.example.simplegymtracker.data.entity.User
 import com.example.simplegymtracker.data.repository.ExerciseRepository
 import com.example.simplegymtracker.data.repository.UserRepository
 import com.example.simplegymtracker.data.repository.WorkoutRepository
@@ -31,6 +33,8 @@ import com.example.simplegymtracker.ui.viewmodel.UserViewModel
 import com.example.simplegymtracker.ui.viewmodel.UserViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +53,15 @@ class MainActivity : ComponentActivity() {
         val userViewModelFactory = UserViewModelFactory(userRepository)
         val exerciseViewModelFactory = ExerciseViewModelFactory(exerciseRepository)
         val workoutViewModelFactory = WorkoutViewModelFactory(workoutRepository)
+
+        // Ensure a default user exists (required for foreign key constraint)
+        lifecycleScope.launch {
+            val users = userRepository.allUsers.first()
+            // If no users exist, create a default user
+            if (users.isEmpty()) {
+                userRepository.insert(User(id = 0, name = "Default", lastName = "User"))
+            }
+        }
 
         setContent {
             SimpleGymTrackerTheme {
