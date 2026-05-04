@@ -72,33 +72,7 @@ fun ExerciseSelectorScreen(
         it.category?.contains(searchQuery, ignoreCase = true) ?: false
     }
 
-    // Predefined exercises (seed data)
-    val predefinedExercises = remember {
-        listOf(
-            Exercise(name = "Bench Press", category = "Chest", createdByUser = false),
-            Exercise(name = "Squat", category = "Legs", createdByUser = false),
-            Exercise(name = "Deadlift", category = "Back", createdByUser = false),
-            Exercise(name = "Overhead Press", category = "Shoulders", createdByUser = false),
-            Exercise(name = "Barbell Row", category = "Back", createdByUser = false),
-            Exercise(name = "Dumbbell Curl", category = "Arms", createdByUser = false),
-            Exercise(name = "Tricep Extension", category = "Arms", createdByUser = false),
-            Exercise(name = "Leg Press", category = "Legs", createdByUser = false),
-            Exercise(name = "Lat Pulldown", category = "Back", createdByUser = false),
-            Exercise(name = "Chest Fly", category = "Chest", createdByUser = false)
-        )
-    }
-
-    // Combine predefined + user created, avoiding duplicates
-    val allExercises = remember(exercises) {
-        val userExercises = exercises.filter { it.createdByUser }
-        val existingNames = userExercises.map { it.name?.lowercase() ?: "" }.toSet()
-        val availablePredefined = predefinedExercises.filter {
-            it.name?.lowercase() !in existingNames
-        }
-        availablePredefined + userExercises
-    }
-
-    val displayExercises = if (searchQuery.isEmpty()) allExercises else filteredExercises
+    val displayExercises = if (searchQuery.isEmpty()) exercises else filteredExercises
 
     Scaffold(
         topBar = {

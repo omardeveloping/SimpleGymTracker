@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.simplegymtracker.data.AppDatabase
+import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.data.entity.User
 import com.example.simplegymtracker.data.repository.ExerciseRepository
 import com.example.simplegymtracker.data.repository.UserRepository
@@ -60,6 +61,26 @@ class MainActivity : ComponentActivity() {
             // If no users exist, create a default user
             if (users.isEmpty()) {
                 userRepository.insert(User(id = 0, name = "Default", lastName = "User"))
+            }
+        }
+
+        // Seed predefined exercises into database
+        lifecycleScope.launch {
+            val existingExercises = exerciseRepository.allExercises.first()
+            if (existingExercises.isEmpty()) {
+                val predefinedExercises = listOf(
+                    Exercise(name = "Bench Press", category = "Chest", createdByUser = false),
+                    Exercise(name = "Squat", category = "Legs", createdByUser = false),
+                    Exercise(name = "Deadlift", category = "Back", createdByUser = false),
+                    Exercise(name = "Overhead Press", category = "Shoulders", createdByUser = false),
+                    Exercise(name = "Barbell Row", category = "Back", createdByUser = false),
+                    Exercise(name = "Dumbbell Curl", category = "Arms", createdByUser = false),
+                    Exercise(name = "Tricep Extension", category = "Arms", createdByUser = false),
+                    Exercise(name = "Leg Press", category = "Legs", createdByUser = false),
+                    Exercise(name = "Lat Pulldown", category = "Back", createdByUser = false),
+                    Exercise(name = "Chest Fly", category = "Chest", createdByUser = false)
+                )
+                predefinedExercises.forEach { exerciseRepository.insert(it) }
             }
         }
 
