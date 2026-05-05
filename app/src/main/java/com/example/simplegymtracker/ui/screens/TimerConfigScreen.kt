@@ -18,23 +18,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -60,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.ElectricBlue
-import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import kotlinx.coroutines.delay
 
@@ -74,13 +70,11 @@ fun TimerConfigScreen(
     var isTimerRunning by remember { mutableStateOf(false) }
     var remainingTime by remember { mutableIntStateOf(0) }
     var totalTime by remember { mutableIntStateOf(0) }
-    var timerLabel by remember { mutableStateOf("Rest between sets") }
-    var soundEnabled by remember { mutableStateOf(true) }
     var currentProgress by remember { mutableFloatStateOf(1f) }
 
     val animatedProgress by animateFloatAsState(
         targetValue = currentProgress,
-        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
         label = "timerProgress"
     )
 
@@ -93,34 +87,37 @@ fun TimerConfigScreen(
                 if (isTimerRunning) {
                     remainingTime -= 1
                     currentProgress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
-                    if (soundEnabled && remainingTime <= 5 && remainingTime > 0) {
+                    if (remainingTime <= 5 && remainingTime > 0) {
                         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
                     }
                 }
             }
             if (remainingTime <= 0) {
                 isTimerRunning = false
-                if (soundEnabled) {
-                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
-                }
+                toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
             }
         }
+    }
+
+    fun startTimer(seconds: Int) {
+        totalTime = seconds
+        remainingTime = seconds
+        currentProgress = 1f
+        isTimerRunning = true
+    }
+
+    fun resetTimer() {
+        isTimerRunning = false
+        remainingTime = 0
+        totalTime = 0
+        currentProgress = 1f
     }
 
     Scaffold(
         topBar = {
             GymTrackerAppBar(
                 title = "Rest Timer",
-                onNavigateBack = onNavigateBack,
-                actions = {
-                    IconButton(onClick = { soundEnabled = !soundEnabled }) {
-                        Icon(
-                            imageVector = if (soundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                            contentDescription = if (soundEnabled) "Sound On" else "Sound Off",
-                            tint = if (soundEnabled) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                onNavigateBack = onNavigateBack
             )
         }
     ) { paddingValues ->
@@ -131,78 +128,45 @@ fun TimerConfigScreen(
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            TimerDisplay(
-                time = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
-                label = timerLabel,
+            TimerCircle(
+                time = if (remainingTime > 0) formatTime(remainingTime) else "00:00",
                 progress = animatedProgress,
-                isRunning = isTimerRunning
+                isRunning = isTimerRunning,
+                hasTimeSet = remainingTime > 0 || totalTime > 0,
+                remainingTime = remainingTime,
+                onStartPause = {
+                    if (remainingTime == 0 && totalTime == 0) return@TimerCircle
+                    isTimerRunning = !isTimerRunning
+                },
+                onReset = { resetTimer() }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                TimerQuickButton(
+                TimerPresetButton(
                     label = "Set Rest",
                     time = "${setRestTime.toIntOrNull() ?: 60}s",
-                    onClick = {
-                        timerLabel = "Rest between sets"
-                        val seconds = setRestTime.toIntOrNull() ?: 60
-                        totalTime = seconds
-                        remainingTime = seconds
-                        isTimerRunning = true
-                    },
+                    onClick = { startTimer(setRestTime.toIntOrNull() ?: 60) },
                     modifier = Modifier.weight(1f)
                 )
-                TimerQuickButton(
+                TimerPresetButton(
                     label = "Exercise Rest",
                     time = "${exerciseRestTime.toIntOrNull() ?: 120}s",
-                    onClick = {
-                        timerLabel = "Rest between exercises"
-                        val seconds = exerciseRestTime.toIntOrNull() ?: 120
-                        totalTime = seconds
-                        remainingTime = seconds
-                        isTimerRunning = true
-                    },
+                    onClick = { startTimer(exerciseRestTime.toIntOrNull() ?: 120) },
                     modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TimerControlButton(
-                label = when {
-                    isTimerRunning -> "Pause"
-                    remainingTime > 0 -> "Resume"
-                    else -> "Start"
-                },
-                onClick = { isTimerRunning = !isTimerRunning },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (remainingTime > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TimerControlButton(
-                    label = "Reset",
-                    onClick = {
-                        isTimerRunning = false
-                        remainingTime = 0
-                        totalTime = 0
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isSecondary = true
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Configuration",
+                text = "Custom Duration",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.align(Alignment.Start)
@@ -218,30 +182,8 @@ fun TimerConfigScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Sound",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Switch(
-                            checked = soundEnabled,
-                            onCheckedChange = { soundEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = ElectricBlue,
-                                uncheckedThumbColor = Color.White,
-                                uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
-                        )
-                    }
-
                     OutlinedTextField(
                         value = setRestTime,
                         onValueChange = { if (it.isEmpty() || it.all { c -> c.isDigit() }) setRestTime = it },
@@ -278,41 +220,44 @@ fun TimerConfigScreen(
 }
 
 @Composable
-private fun TimerDisplay(
+private fun TimerCircle(
     time: String,
-    label: String,
     progress: Float,
-    isRunning: Boolean
+    isRunning: Boolean,
+    hasTimeSet: Boolean,
+    remainingTime: Int,
+    onStartPause: () -> Unit,
+    onReset: () -> Unit
 ) {
+    val timerBg = Color(0xFF1C1C1E)
+    val ringBg = Color(0xFF2C2C2E)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+            .height(320.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = timerBg)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(ElectricBlue, ElectricBlueDeep),
-                        start = Offset(0f, 0f),
-                        end = Offset(1f, 1f)
-                    ),
-                    RoundedCornerShape(20.dp)
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(220.dp)
             ) {
-                val strokeWidth = 10f
+                val strokeWidth = 8f
                 val radius = (size.minDimension - strokeWidth) / 2
                 val center = Offset(size.width / 2, size.height / 2)
 
+                drawCircle(
+                    color = ringBg,
+                    radius = radius + strokeWidth / 2,
+                    style = Stroke(width = strokeWidth * 3, cap = StrokeCap.Round)
+                )
+
                 drawArc(
-                    color = Color.White.copy(alpha = 0.2f),
+                    color = Color(0xFF3A3A3C),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -321,9 +266,9 @@ private fun TimerDisplay(
                     size = Size(radius * 2, radius * 2)
                 )
 
-                if (progress > 0f) {
+                if (hasTimeSet && progress < 1f) {
                     drawArc(
-                        color = Color.White,
+                        color = ElectricBlue,
                         startAngle = -90f,
                         sweepAngle = 360f * progress,
                         useCenter = false,
@@ -337,39 +282,71 @@ private fun TimerDisplay(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = Icons.Default.Timer,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(28.dp)
+                Text(
+                    text = time,
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    letterSpacing = 4.sp,
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = time,
-                    fontSize = 56.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    letterSpacing = 2.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center
-                )
-
-                if (!isRunning && progress >= 1f) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                if (!hasTimeSet) {
                     Text(
-                        text = "Select a rest type to begin",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.6f)
+                        text = "Select a rest type below",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.5f)
                     )
+                } else if (isRunning) {
+                    Text(
+                        text = "Tap to pause",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ElectricBlue
+                    )
+                } else if (remainingTime > 0) {
+                    Text(
+                        text = "Tap to resume",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            if (hasTimeSet) {
+                Box(
+                    modifier = Modifier
+                        .size(220.dp)
+                        .clickable(onClick = onStartPause),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isRunning) "Pause" else "Start",
+                        tint = Color.White.copy(alpha = 0.08f),
+                        modifier = Modifier.size(80.dp)
+                    )
+                }
+
+                if (!isRunning && remainingTime > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(32.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFF3A3A3C))
+                            .clickable(onClick = onReset)
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reset",
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
@@ -377,7 +354,7 @@ private fun TimerDisplay(
 }
 
 @Composable
-private fun TimerQuickButton(
+private fun TimerPresetButton(
     label: String,
     time: String,
     onClick: () -> Unit,
@@ -411,36 +388,6 @@ private fun TimerQuickButton(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun TimerControlButton(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isSecondary: Boolean = false
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .then(
-                if (isSecondary) Modifier.background(SurfaceSoft)
-                else Modifier.background(
-                    Brush.horizontalGradient(colors = listOf(ElectricBlue, ElectricBlueDeep)),
-                    RoundedCornerShape(14.dp)
-                )
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = if (isSecondary) ElectricBlue else Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
