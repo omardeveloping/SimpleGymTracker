@@ -1,7 +1,6 @@
 package com.example.simplegymtracker.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -23,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -32,14 +30,10 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -61,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
+import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.CardTintLavender
 import com.example.simplegymtracker.ui.theme.CardTintMint
 import com.example.simplegymtracker.ui.theme.CardTintPeach
@@ -110,116 +104,92 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Simple Gym Tracker",
-                        style = MaterialTheme.typography.headlineMedium
+            GymTrackerAppBar(title = "Simple Gym Tracker")
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HeroCard(
+                        greeting = greeting,
+                        streak = streak,
+                        onStartWorkout = {
+                            if (isStartingSession) return@HeroCard
+                            isStartingSession = true
+                            workoutViewModel.startNewSessionOrResume(userId = 1) { sessionId ->
+                                onStartWorkout(sessionId)
+                                isStartingSession = false
+                            }
+                        }
                     )
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToCalendar) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = "Calendar",
-                            tint = ElectricBlue
-                        )
+                }
+
+                item {
+                    QuickActionsGrid(
+                        onNavigateToHistory = onNavigateToHistory,
+                        onNavigateToProgress = onNavigateToProgress,
+                        onNavigateToTimer = onNavigateToTimer,
+                        onNavigateToCalendar = onNavigateToCalendar
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "Recent Sessions",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (recentSessions.isEmpty()) {
+                    item {
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 2 }
+                        ) {
+                            EmptySessionsState()
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (isStartingSession) return@FloatingActionButton
+                } else {
+                    itemsIndexed(recentSessions) { index, session ->
+                        AnimatedVisibility(
+                            visible = index in visibleCardIndices,
+                            enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 40 }
+                        ) {
+                            SessionCard(
+                                session = session,
+                                onClick = { onStartWorkout(session.sessionId.toLong()) }
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            StartWorkoutButton(
+                onStartWorkout = {
+                    if (isStartingSession) return@StartWorkoutButton
                     isStartingSession = true
                     workoutViewModel.startNewSessionOrResume(userId = 1) { sessionId ->
                         onStartWorkout(sessionId)
                         isStartingSession = false
                     }
-                },
-                containerColor = ElectricBlue,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.shadow(8.dp, RoundedCornerShape(16.dp))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Start Workout",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                HeroCard(
-                    greeting = greeting,
-                    streak = streak,
-                    onStartWorkout = {
-                        if (isStartingSession) return@HeroCard
-                        isStartingSession = true
-                        workoutViewModel.startNewSessionOrResume(userId = 1) { sessionId ->
-                            onStartWorkout(sessionId)
-                            isStartingSession = false
-                        }
-                    }
-                )
-            }
-
-            item {
-                QuickActionsGrid(
-                    onNavigateToHistory = onNavigateToHistory,
-                    onNavigateToProgress = onNavigateToProgress,
-                    onNavigateToTimer = onNavigateToTimer,
-                    onNavigateToCalendar = onNavigateToCalendar
-                )
-            }
-
-            item {
-                Text(
-                    text = "Recent Sessions",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (recentSessions.isEmpty()) {
-                item {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 2 }
-                    ) {
-                        EmptySessionsState()
-                    }
                 }
-            } else {
-                itemsIndexed(recentSessions) { index, session ->
-                    AnimatedVisibility(
-                        visible = index in visibleCardIndices,
-                        enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 40 }
-                    ) {
-                        SessionCard(
-                            session = session,
-                            onClick = { onStartWorkout(session.sessionId.toLong()) }
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            )
         }
     }
 }
@@ -582,6 +552,49 @@ fun SessionCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 modifier = Modifier.size(18.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun StartWorkoutButton(onStartWorkout: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp, top = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(ElectricBlue, ElectricBlueDeep)
+                    )
+                )
+                .clickable(onClick = onStartWorkout)
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Start Workout",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

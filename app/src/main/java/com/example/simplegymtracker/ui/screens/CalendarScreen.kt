@@ -21,10 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,8 +34,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
+import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.SetPending
@@ -82,21 +79,9 @@ fun CalendarScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Calendar",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            GymTrackerAppBar(
+                title = "Calendar",
+                onNavigateBack = onNavigateBack
             )
         }
     ) { paddingValues ->
@@ -151,14 +136,14 @@ private fun WeekView(
     val sessions by workoutViewModel.getSessionsForWeek(currentWeekStart).collectAsState()
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -176,10 +161,6 @@ private fun WeekView(
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next Week")
                 }
             }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
         val calendar = Calendar.getInstance().apply { timeInMillis = currentWeekStart }
@@ -213,24 +194,17 @@ private fun MonthView(
 
     val sessions by workoutViewModel.getSessionsForMonth(currentYear, currentMonth).collectAsState()
 
-    val calendar = Calendar.getInstance().apply {
+    val daysInMonth = Calendar.getInstance().apply {
         set(currentYear, currentMonth - 1, 1)
-    }
-    val firstDayOfMonth = calendar.timeInMillis
-
-    calendar.add(Calendar.MONTH, 1)
-    calendar.add(Calendar.MILLISECOND, -1)
-    val lastDayOfMonth = calendar.timeInMillis
-
-    val daysInMonth = (currentMonth..currentMonth).map { calendar.getActualMaximum(Calendar.DAY_OF_MONTH) }.first()
+    }.getActualMaximum(Calendar.DAY_OF_MONTH)
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -263,10 +237,10 @@ private fun MonthView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa").forEach { day ->
@@ -294,8 +268,9 @@ private fun MonthView(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
             items(cells) { dayNumber ->
                 if (dayNumber != null) {
@@ -311,17 +286,25 @@ private fun MonthView(
                     MonthDayCell(
                         day = dayNumber,
                         hasSession = hasSession,
+                        isToday = isToday(currentYear, currentMonth - 1, dayNumber),
                         onClick = {
                             val session = sessions.find { it.date in dayStart..dayEnd }
                             session?.let { onSessionClick(it.sessionId.toLong()) }
                         }
                     )
                 } else {
-                    Box(modifier = Modifier.size(40.dp))
+                    Box(modifier = Modifier.fillMaxWidth())
                 }
             }
         }
     }
+}
+
+private fun isToday(year: Int, month: Int, day: Int): Boolean {
+    val now = Calendar.getInstance()
+    return now.get(Calendar.YEAR) == year &&
+            now.get(Calendar.MONTH) == month &&
+            now.get(Calendar.DAY_OF_MONTH) == day
 }
 
 @Composable
@@ -340,15 +323,15 @@ private fun DayCard(
             .clickable(enabled = hasWorkout) {
                 sessions.firstOrNull()?.let { onSessionClick(it.sessionId.toLong()) }
             },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (hasWorkout) CardTintSky else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (hasWorkout) CardTintSky else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
@@ -404,20 +387,34 @@ private fun DayCard(
 private fun MonthDayCell(
     day: Int,
     hasSession: Boolean,
+    isToday: Boolean,
     onClick: () -> Unit
 ) {
+    val backgroundColor = when {
+        isToday -> ElectricBlue
+        hasSession -> ElectricBlue.copy(alpha = 0.15f)
+        else -> MaterialTheme.colorScheme.surface
+    }
+    val textColor = when {
+        isToday -> MaterialTheme.colorScheme.onPrimary
+        hasSession -> ElectricBlue
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(if (hasSession) ElectricBlue else MaterialTheme.colorScheme.surface)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
             .clickable(enabled = hasSession, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = day.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (hasSession) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
         )
     }
 }

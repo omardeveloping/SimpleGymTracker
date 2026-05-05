@@ -28,8 +28,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -38,14 +38,14 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,15 +61,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.horizontalScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.data.entity.ExerciseLog
 import com.example.simplegymtracker.data.entity.Set
-import com.example.simplegymtracker.ui.components.NumericInputField
-import com.example.simplegymtracker.ui.components.NumericKeypad
-import com.example.simplegymtracker.ui.components.KeypadMode
+import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.components.SwipeableSetRow
 import com.example.simplegymtracker.ui.components.UnitToggle
 import com.example.simplegymtracker.ui.theme.CardTintMint
@@ -108,44 +107,33 @@ fun ActiveWorkoutScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Active Workout",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToTimer) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = "Timer",
-                            tint = ElectricBlue
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            GymTrackerAppBar(
+                title = "Active Workout",
+                onNavigateBack = onNavigateBack,
+                actionIcon = Icons.Default.Timer,
+                actionContentDescription = "Timer",
+                onActionClick = onNavigateToTimer
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = onAddExercise,
                 containerColor = ElectricBlue,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Exercise",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Add Exercise",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            )
         }
     ) { paddingValues ->
         LazyColumn(
@@ -444,65 +432,22 @@ fun AddSetForm(
     onAdd: (Float, Int, String) -> Unit,
     onCancel: () -> Unit
 ) {
-    var weight by remember { mutableFloatStateOf(if (initialWeight > 0) initialWeight else 20f) }
+    val initialWeightInUnit = if (preferredUnit == "lb") initialWeight / 0.453592f else initialWeight
+    var weightInUnit by remember { mutableFloatStateOf(if (initialWeightInUnit > 0) initialWeightInUnit else 20f) }
     var reps by remember { mutableIntStateOf(if (initialReps > 0) initialReps else 8) }
     var type by remember { mutableStateOf("Working Set") }
     var selectedUnit by remember { mutableStateOf(preferredUnit) }
 
-    var showKeypad by remember { mutableStateOf(false) }
-    var activeField by remember { mutableStateOf<KeypadMode?>(null) }
-    var keypadInput by remember { mutableStateOf("") }
+    var weightText by remember { mutableStateOf(weightInUnit.toString().trimEnd('0').trimEnd('.')) }
+    var repsText by remember { mutableStateOf(reps.toString()) }
 
-    fun openKeypad(mode: KeypadMode) {
-        activeField = mode
-        keypadInput = when (mode) {
-            KeypadMode.WEIGHT -> weight.toString().trimEnd('0').trimEnd('.')
-            KeypadMode.REPS -> reps.toString()
-        }
-        showKeypad = true
-    }
-
-    fun handleDigit(digit: String) {
-        if (activeField == KeypadMode.WEIGHT) {
-            if (keypadInput.isEmpty() && digit == "0") return
-            if (keypadInput.contains('.') && keypadInput.substringAfter('.').length >= 1) return
-            keypadInput += digit
-        } else {
-            if (keypadInput.isEmpty() && digit == "0") return
-            if (keypadInput.length >= 3) return
-            keypadInput += digit
-        }
-    }
-
-    fun handleDecimal() {
-        if (activeField == KeypadMode.WEIGHT && !keypadInput.contains('.')) {
-            if (keypadInput.isEmpty()) keypadInput = "0"
-            keypadInput += "."
-        }
-    }
-
-    fun handleBackspace() {
-        if (keypadInput.isNotEmpty()) {
-            keypadInput = keypadInput.dropLast(1)
-        }
-    }
-
-    fun handleDone() {
-        if (keypadInput.isNotEmpty() && keypadInput != ".") {
-            when (activeField) {
-                KeypadMode.WEIGHT -> {
-                    val newValue = keypadInput.toFloatOrNull()?.coerceIn(0f, 300f)
-                    if (newValue != null) weight = newValue
-                }
-                KeypadMode.REPS -> {
-                    val newValue = keypadInput.toIntOrNull()?.coerceIn(1, 100)
-                    if (newValue != null) reps = newValue
-                }
-                null -> {}
-            }
-        }
-        showKeypad = false
-        activeField = null
+    fun onUnitChange(newUnit: String) {
+        if (newUnit == selectedUnit) return
+        val currentKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+        val converted = if (newUnit == "lb") currentKg / 0.453592f else currentKg
+        weightInUnit = converted
+        weightText = converted.toString().trimEnd('0').trimEnd('.')
+        selectedUnit = newUnit
     }
 
     Column(
@@ -517,35 +462,58 @@ fun AddSetForm(
         ) {
             UnitToggle(
                 selectedUnit = selectedUnit,
-                onUnitChange = { selectedUnit = it }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NumericInputField(
-                label = "Weight",
-                value = weight.toString().trimEnd('0').trimEnd('.'),
-                unit = "kg",
-                onClick = { openKeypad(KeypadMode.WEIGHT) },
-                modifier = Modifier.weight(1f)
-            )
-
-            NumericInputField(
-                label = "Reps",
-                value = reps.toString(),
-                unit = "reps",
-                onClick = { openKeypad(KeypadMode.REPS) },
-                modifier = Modifier.weight(1f)
+                onUnitChange = { onUnitChange(it) }
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = weightText,
+                onValueChange = {
+                    if (it.isEmpty() || it.toFloatOrNull() != null) {
+                        weightText = it
+                        weightInUnit = it.toFloatOrNull() ?: 0f
+                    }
+                },
+                label = { Text("Weight") },
+                trailingIcon = { Text(selectedUnit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ElectricBlue,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            OutlinedTextField(
+                value = repsText,
+                onValueChange = {
+                    if (it.isEmpty() || it.toIntOrNull() != null) {
+                        repsText = it
+                        reps = it.toIntOrNull() ?: 0
+                    }
+                },
+                label = { Text("Reps") },
+                trailingIcon = { Text("reps", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ElectricBlue,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier
@@ -570,7 +538,7 @@ fun AddSetForm(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -590,23 +558,13 @@ fun AddSetForm(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .clickable {
-                        val finalWeight = if (selectedUnit == "lb") weight * 0.453592f else weight
-                        onAdd(finalWeight, reps, type)
+                        val weightInKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+                        onAdd(weightInKg, reps, type)
                     }
                     .padding(8.dp)
             )
         }
     }
-
-    NumericKeypad(
-        visible = showKeypad,
-        currentValue = keypadInput.ifEmpty { "0" },
-        mode = activeField ?: KeypadMode.WEIGHT,
-        onDigitClick = { handleDigit(it) },
-        onDecimalClick = { handleDecimal() },
-        onBackspace = { handleBackspace() },
-        onDone = { handleDone() }
-    )
 }
 
 @Composable
