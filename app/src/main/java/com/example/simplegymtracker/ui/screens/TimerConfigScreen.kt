@@ -5,7 +5,7 @@ import android.media.ToneGenerator
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,24 +19,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,13 +46,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.ElectricBlue
-import com.example.simplegymtracker.ui.theme.RestTimerAccent
-import com.example.simplegymtracker.ui.theme.RestTimerBg
+import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
+import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +80,7 @@ fun TimerConfigScreen(
 
     val animatedProgress by animateFloatAsState(
         targetValue = currentProgress,
-        animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
+        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
         label = "timerProgress"
     )
 
@@ -123,76 +131,24 @@ fun TimerConfigScreen(
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TimerDisplay(
+                time = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
+                label = timerLabel,
+                progress = animatedProgress,
+                isRunning = isTimerRunning
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = RestTimerBg
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = { 1f },
-                        modifier = Modifier.size(180.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        strokeWidth = 8.dp,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    CircularProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.size(180.dp),
-                        color = RestTimerAccent,
-                        strokeWidth = 8.dp,
-                        trackColor = androidx.compose.ui.graphics.Color.Transparent
-                    )
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = RestTimerAccent,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = RestTimerAccent
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = timerLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (!isTimerRunning && remainingTime == 0) {
-                            Text(
-                                text = "Tap Start to begin",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                TimerButton(
-                    label = "Start Set Rest",
+                TimerQuickButton(
+                    label = "Set Rest",
+                    time = "${setRestTime.toIntOrNull() ?: 60}s",
                     onClick = {
                         timerLabel = "Rest between sets"
                         val seconds = setRestTime.toIntOrNull() ?: 60
@@ -202,8 +158,9 @@ fun TimerConfigScreen(
                     },
                     modifier = Modifier.weight(1f)
                 )
-                TimerButton(
-                    label = "Start Exercise Rest",
+                TimerQuickButton(
+                    label = "Exercise Rest",
+                    time = "${exerciseRestTime.toIntOrNull() ?: 120}s",
                     onClick = {
                         timerLabel = "Rest between exercises"
                         val seconds = exerciseRestTime.toIntOrNull() ?: 120
@@ -217,109 +174,273 @@ fun TimerConfigScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            TimerButton(
-                label = if (isTimerRunning) "Pause" else if (remainingTime > 0) "Resume" else "Start",
-                onClick = { isTimerRunning = !isTimerRunning },
-                modifier = Modifier.fillMaxWidth(),
-                isSecondary = true
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TimerButton(
-                label = "Reset",
-                onClick = {
-                    isTimerRunning = false
-                    remainingTime = 0
-                    totalTime = 0
+            TimerControlButton(
+                label = when {
+                    isTimerRunning -> "Pause"
+                    remainingTime > 0 -> "Resume"
+                    else -> "Start"
                 },
-                modifier = Modifier.fillMaxWidth(),
-                isSecondary = true
+                onClick = { isTimerRunning = !isTimerRunning },
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            if (remainingTime > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TimerControlButton(
+                    label = "Reset",
+                    onClick = {
+                        isTimerRunning = false
+                        remainingTime = 0
+                        totalTime = 0
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    isSecondary = true
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Timer Configuration",
+                text = "Configuration",
                 style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.align(Alignment.Start)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Text(
-                    text = "Sound",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
-                    checked = soundEnabled,
-                    onCheckedChange = { soundEnabled = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = ElectricBlue,
-                        checkedTrackColor = ElectricBlue.copy(alpha = 0.5f)
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Sound",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Switch(
+                            checked = soundEnabled,
+                            onCheckedChange = { soundEnabled = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = ElectricBlue,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = setRestTime,
+                        onValueChange = { if (it.isEmpty() || it.all { c -> c.isDigit() }) setRestTime = it },
+                        label = { Text("Rest between sets (seconds)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ElectricBlue,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
-                )
+
+                    OutlinedTextField(
+                        value = exerciseRestTime,
+                        onValueChange = { if (it.isEmpty() || it.all { c -> c.isDigit() }) exerciseRestTime = it },
+                        label = { Text("Rest between exercises (seconds)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ElectricBlue,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
 
-            OutlinedTextField(
-                value = setRestTime,
-                onValueChange = { setRestTime = it },
-                label = { Text("Rest between sets (seconds)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+@Composable
+private fun TimerDisplay(
+    time: String,
+    label: String,
+    progress: Float,
+    isRunning: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(280.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(ElectricBlue, ElectricBlueDeep),
+                        start = Offset(0f, 0f),
+                        end = Offset(1f, 1f)
+                    ),
+                    RoundedCornerShape(20.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(
+                modifier = Modifier.size(200.dp)
+            ) {
+                val strokeWidth = 10f
+                val radius = (size.minDimension - strokeWidth) / 2
+                val center = Offset(size.width / 2, size.height / 2)
+
+                drawArc(
+                    color = Color.White.copy(alpha = 0.2f),
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                    topLeft = Offset(center.x - radius, center.y - radius),
+                    size = Size(radius * 2, radius * 2)
+                )
+
+                if (progress > 0f) {
+                    drawArc(
+                        color = Color.White,
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                        topLeft = Offset(center.x - radius, center.y - radius),
+                        size = Size(radius * 2, radius * 2)
+                    )
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timer,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(28.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = time,
+                    fontSize = 56.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    letterSpacing = 2.sp
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center
+                )
+
+                if (!isRunning && progress >= 1f) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Select a rest type to begin",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimerQuickButton(
+    label: String,
+    time: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(80.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = time,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = ElectricBlue
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = exerciseRestTime,
-                onValueChange = { exerciseRestTime = it },
-                label = { Text("Rest between exercises (seconds)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
 @Composable
-fun TimerButton(
+private fun TimerControlButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isSecondary: Boolean = false
 ) {
-    val backgroundColor = if (isSecondary) MaterialTheme.colorScheme.surface else ElectricBlue
-    val textColor = if (isSecondary) ElectricBlue else MaterialTheme.colorScheme.onPrimary
-    val border = if (isSecondary) BorderStroke(1.dp, ElectricBlue) else null
-
-    Card(
+    Box(
         modifier = modifier
-            .height(48.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = border
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = textColor
+            .clip(RoundedCornerShape(14.dp))
+            .then(
+                if (isSecondary) Modifier.background(SurfaceSoft)
+                else Modifier.background(
+                    Brush.horizontalGradient(colors = listOf(ElectricBlue, ElectricBlueDeep)),
+                    RoundedCornerShape(14.dp)
+                )
             )
-        }
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (isSecondary) ElectricBlue else Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
