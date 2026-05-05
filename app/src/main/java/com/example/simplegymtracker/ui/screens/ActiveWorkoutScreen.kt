@@ -433,20 +433,22 @@ fun AddSetForm(
     onCancel: () -> Unit
 ) {
     val initialWeightInUnit = if (preferredUnit == "lb") initialWeight / 0.453592f else initialWeight
-    var weightInUnit by remember { mutableFloatStateOf(if (initialWeightInUnit > 0) initialWeightInUnit else 20f) }
+    val roundedInitial = "%.1f".format(initialWeightInUnit).toFloat()
+    var weightInUnit by remember { mutableFloatStateOf(if (roundedInitial > 0) roundedInitial else 20f) }
     var reps by remember { mutableIntStateOf(if (initialReps > 0) initialReps else 8) }
     var type by remember { mutableStateOf("Working Set") }
     var selectedUnit by remember { mutableStateOf(preferredUnit) }
 
-    var weightText by remember { mutableStateOf(weightInUnit.toString().trimEnd('0').trimEnd('.')) }
+    var weightText by remember { mutableStateOf("%.1f".format(weightInUnit).trimEnd('0').trimEnd('.')) }
     var repsText by remember { mutableStateOf(reps.toString()) }
 
     fun onUnitChange(newUnit: String) {
         if (newUnit == selectedUnit) return
         val currentKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
         val converted = if (newUnit == "lb") currentKg / 0.453592f else currentKg
-        weightInUnit = converted
-        weightText = converted.toString().trimEnd('0').trimEnd('.')
+        val rounded = "%.1f".format(converted).toFloat()
+        weightInUnit = rounded
+        weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
         selectedUnit = newUnit
     }
 

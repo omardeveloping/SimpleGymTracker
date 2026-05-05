@@ -20,12 +20,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,7 +46,6 @@ import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,11 +57,14 @@ fun ProgressChartScreen(
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val sessions by workoutViewModel.allSessions.collectAsState()
 
-    val chartData = remember(sessions) {
-        if (sessions.size < 2) return@remember emptyList<Pair<Float, Float>>()
+    val totalWorkouts = sessions.size
 
+    val chartData = remember(sessions) {
+        if (sessions.isEmpty()) return@remember emptyList<Pair<Float, Float>>()
+
+        val sortedSessions = sessions.sortedBy { it.date }
         val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-        val sessionsByDay = sessions.groupBy {
+        val sessionsByDay = sortedSessions.groupBy {
             dateFormat.format(Date(it.date))
         }.toSortedMap()
 
@@ -75,10 +74,26 @@ fun ProgressChartScreen(
             cumulativeCount += daySessions.size
             points.add(index.toFloat() to cumulativeCount.toFloat())
         }
+
+        if (points.size < 2 && sortedSessions.size >= 2) {
+            points.clear()
+            sortedSessions.forEachIndexed { index, session ->
+                points.add(index.toFloat() to (index + 1).toFloat())
+            }
+        }
+
         points
     }
 
-    val totalWorkouts = sessions.size
+    val firstWorkoutDate = if (sessions.isNotEmpty()) {
+        val oldest = sessions.minByOrNull { it.date }
+        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(oldest?.date ?: 0))
+    } else "—"
+
+    val lastWorkoutDate = if (sessions.isNotEmpty()) {
+        val newest = sessions.maxByOrNull { it.date }
+        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(newest?.date ?: 0))
+    } else "—"
 
     Scaffold(
         topBar = {
@@ -153,15 +168,9 @@ fun ProgressChartScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatRow(label = "Total Workouts", value = totalWorkouts.toString())
                 StatRow(label = "Total Sessions", value = totalWorkouts.toString())
-                StatRow(
-                    label = "First Workout",
-                    value = if (sessions.isNotEmpty()) {
-                        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                            .format(Date(sessions.last().date))
-                    } else "—"
-                )
+                StatRow(label = "First Workout", value = firstWorkoutDate)
+                StatRow(label = "Last Workout", value = lastWorkoutDate)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -178,7 +187,6 @@ fun AnimatedLineChart(
     val pointColor = ElectricBlue
     val gridColor = Color(0xFFE5E3DF)
 
-    // Animate the drawing of the line from 0 to full progress
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(data) {
         animationProgress.snapTo(0f)
@@ -196,7 +204,6 @@ fun AnimatedLineChart(
         val maxY = data.maxOf { it.second }
         val minY = 0f
 
-        // Draw grid lines (horizontal)
         val gridLines = 5
         for (i in 0..gridLines) {
             val y = padding + chartHeight * (i / gridLines.toFloat())
@@ -208,14 +215,12 @@ fun AnimatedLineChart(
             )
         }
 
-        // Calculate points
         val points = data.map { (x, y) ->
             val px = padding + (x / maxX) * chartWidth
             val py = padding + chartHeight - ((y - minY) / (maxY - minY)) * chartHeight
             Offset(px, py)
         }
 
-        // Draw animated line using Path
         if (points.size > 1) {
             val path = Path()
             path.moveTo(points[0].x, points[0].y)
@@ -228,7 +233,6 @@ fun AnimatedLineChart(
                 path.lineTo(points[i + 1].x, points[i + 1].y)
             }
 
-            // Partial segment
             if (currentSegment < totalSegments && segmentProgress > 0f) {
                 val start = points[currentSegment]
                 val end = points[currentSegment + 1]
@@ -244,7 +248,6 @@ fun AnimatedLineChart(
             )
         }
 
-        // Draw points only when animation reaches them
         val visiblePoints = (animationProgress.value * points.size).toInt().coerceAtLeast(1)
         points.take(visiblePoints).forEach { point ->
             drawCircle(
