@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import kotlinx.coroutines.delay
 
@@ -229,18 +231,24 @@ private fun TimerCircle(
     onStartPause: () -> Unit,
     onReset: () -> Unit
 ) {
-    val timerBg = Color(0xFF1C1C1E)
-    val ringBg = Color(0xFF2C2C2E)
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(320.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = timerBg)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(ElectricBlue, ElectricBlueDeep),
+                        start = Offset(0f, 0f),
+                        end = Offset(1f, 1f)
+                    ),
+                    RoundedCornerShape(24.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
@@ -250,14 +258,8 @@ private fun TimerCircle(
                 val radius = (size.minDimension - strokeWidth) / 2
                 val center = Offset(size.width / 2, size.height / 2)
 
-                drawCircle(
-                    color = ringBg,
-                    radius = radius + strokeWidth / 2,
-                    style = Stroke(width = strokeWidth * 3, cap = StrokeCap.Round)
-                )
-
                 drawArc(
-                    color = Color(0xFF3A3A3C),
+                    color = Color.White.copy(alpha = 0.2f),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -268,7 +270,7 @@ private fun TimerCircle(
 
                 if (hasTimeSet && progress < 1f) {
                     drawArc(
-                        color = ElectricBlue,
+                        color = Color.White,
                         startAngle = -90f,
                         sweepAngle = 360f * progress,
                         useCenter = false,
@@ -303,7 +305,7 @@ private fun TimerCircle(
                     Text(
                         text = "Tap to pause",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = ElectricBlue
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 } else if (remainingTime > 0) {
                     Text(
@@ -335,7 +337,7 @@ private fun TimerCircle(
                             .align(Alignment.BottomEnd)
                             .padding(32.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(Color(0xFF3A3A3C))
+                            .background(Color.White.copy(alpha = 0.2f))
                             .clickable(onClick = onReset)
                             .padding(10.dp),
                         contentAlignment = Alignment.Center

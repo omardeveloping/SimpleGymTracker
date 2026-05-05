@@ -185,7 +185,7 @@ fun AnimatedLineChart(
 ) {
     val lineColor = ElectricBlue
     val pointColor = ElectricBlue
-    val gridColor = Color(0xFFE5E3DF)
+    val gridColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
 
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(data) {
