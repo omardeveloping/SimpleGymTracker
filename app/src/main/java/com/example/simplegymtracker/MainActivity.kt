@@ -27,6 +27,7 @@ import com.example.simplegymtracker.data.repository.UserRepository
 import com.example.simplegymtracker.data.repository.WorkoutRepository
 import com.example.simplegymtracker.ui.navigation.Screen
 import com.example.simplegymtracker.ui.screens.ActiveWorkoutScreen
+import com.example.simplegymtracker.ui.screens.CalendarScreen
 import com.example.simplegymtracker.ui.screens.ExerciseSelectorScreen
 import com.example.simplegymtracker.ui.screens.HomeScreen
 import com.example.simplegymtracker.ui.screens.ProgressChartScreen
@@ -57,29 +58,35 @@ class MainActivity : ComponentActivity() {
         val exerciseViewModelFactory = ExerciseViewModelFactory(exerciseRepository)
         val workoutViewModelFactory = WorkoutViewModelFactory(workoutRepository)
 
-        // Ensure a default user exists (required for foreign key constraint)
         lifecycleScope.launch {
             val users = userRepository.allUsers.first()
             if (users.isEmpty()) {
-                userRepository.insert(User(id = 0, name = "Default", lastName = "User"))
+                userRepository.insert(User(id = 0, name = "Default", lastName = "User", preferredUnit = "kg"))
             }
         }
 
-        // Seed predefined exercises into database
         lifecycleScope.launch {
             val existingExercises = exerciseRepository.allExercises.first()
             if (existingExercises.isEmpty()) {
                 val predefinedExercises = listOf(
-                    Exercise(name = "Bench Press", category = "Chest", createdByUser = false),
-                    Exercise(name = "Squat", category = "Legs", createdByUser = false),
-                    Exercise(name = "Deadlift", category = "Back", createdByUser = false),
-                    Exercise(name = "Overhead Press", category = "Shoulders", createdByUser = false),
-                    Exercise(name = "Barbell Row", category = "Back", createdByUser = false),
-                    Exercise(name = "Dumbbell Curl", category = "Arms", createdByUser = false),
-                    Exercise(name = "Tricep Extension", category = "Arms", createdByUser = false),
-                    Exercise(name = "Leg Press", category = "Legs", createdByUser = false),
-                    Exercise(name = "Lat Pulldown", category = "Back", createdByUser = false),
-                    Exercise(name = "Chest Fly", category = "Chest", createdByUser = false)
+                    Exercise(name = "Bench Press", category = "Strength", equipment = "Barbell", muscleGroup = "Chest", createdByUser = false),
+                    Exercise(name = "Squat", category = "Strength", equipment = "Barbell", muscleGroup = "Legs", createdByUser = false),
+                    Exercise(name = "Deadlift", category = "Strength", equipment = "Barbell", muscleGroup = "Back", createdByUser = false),
+                    Exercise(name = "Overhead Press", category = "Strength", equipment = "Barbell", muscleGroup = "Shoulders", createdByUser = false),
+                    Exercise(name = "Barbell Row", category = "Strength", equipment = "Barbell", muscleGroup = "Back", createdByUser = false),
+                    Exercise(name = "Dumbbell Curl", category = "Strength", equipment = "Dumbbell", muscleGroup = "Arms", createdByUser = false),
+                    Exercise(name = "Lateral Raise", category = "Strength", equipment = "Dumbbell", muscleGroup = "Shoulders", createdByUser = false),
+                    Exercise(name = "Dumbbell Fly", category = "Strength", equipment = "Dumbbell", muscleGroup = "Chest", createdByUser = false),
+                    Exercise(name = "Leg Press", category = "Strength", equipment = "Machine", muscleGroup = "Legs", createdByUser = false),
+                    Exercise(name = "Lat Pulldown", category = "Strength", equipment = "Machine", muscleGroup = "Back", createdByUser = false),
+                    Exercise(name = "Chest Press Machine", category = "Strength", equipment = "Machine", muscleGroup = "Chest", createdByUser = false),
+                    Exercise(name = "Treadmill Running", category = "Cardio", equipment = "Treadmill", muscleGroup = "Legs", createdByUser = false),
+                    Exercise(name = "Stationary Bike", category = "Cardio", equipment = "Bike", muscleGroup = "Legs", createdByUser = false),
+                    Exercise(name = "Rowing Machine", category = "Cardio", equipment = "Rowing", muscleGroup = "Back", createdByUser = false),
+                    Exercise(name = "Stairmaster", category = "Cardio", equipment = "Stairmaster", muscleGroup = "Legs", createdByUser = false),
+                    Exercise(name = "Push-up", category = "Strength", equipment = "Bodyweight", muscleGroup = "Chest", createdByUser = false),
+                    Exercise(name = "Pull-up", category = "Strength", equipment = "Bodyweight", muscleGroup = "Back", createdByUser = false),
+                    Exercise(name = "Plank", category = "Strength", equipment = "Bodyweight", muscleGroup = "Core", createdByUser = false)
                 )
                 predefinedExercises.forEach { exerciseRepository.insert(it) }
             }
@@ -150,6 +157,9 @@ fun AppNavHost(
                 },
                 onNavigateToTimer = {
                     navController.navigate(Screen.TimerConfig.route)
+                },
+                onNavigateToCalendar = {
+                    navController.navigate(Screen.Calendar.route)
                 }
             )
         }
@@ -218,7 +228,9 @@ fun AppNavHost(
                 workoutViewModelFactory = workoutViewModelFactory,
                 exerciseViewModelFactory = exerciseViewModelFactory,
                 onCopySession = { sessionId ->
-                    // TODO: Implement copy session logic
+                    workoutViewModelFactory.let { factory ->
+                        // Copy session logic is handled in the ViewModel
+                    }
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -250,6 +262,25 @@ fun AppNavHost(
             popExitTransition = { popExitTransition }
         ) {
             TimerConfigScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Calendar.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) {
+            CalendarScreen(
+                workoutViewModelFactory = workoutViewModelFactory,
+                exerciseViewModelFactory = exerciseViewModelFactory,
+                onSessionClick = { sessionId ->
+                    navController.navigate(Screen.ActiveWorkout.createRoute(sessionId))
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

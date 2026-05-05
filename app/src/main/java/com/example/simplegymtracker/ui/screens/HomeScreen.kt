@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Timer
@@ -37,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,7 +80,8 @@ fun HomeScreen(
     onStartWorkout: (Long) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToProgress: () -> Unit,
-    onNavigateToTimer: () -> Unit
+    onNavigateToTimer: () -> Unit,
+    onNavigateToCalendar: () -> Unit
 ) {
     val userViewModel: UserViewModel = viewModel(factory = userViewModelFactory)
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
@@ -105,6 +108,15 @@ fun HomeScreen(
                         text = "Simple Gym Tracker",
                         style = MaterialTheme.typography.headlineMedium
                     )
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToCalendar) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Calendar",
+                            tint = ElectricBlue
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface

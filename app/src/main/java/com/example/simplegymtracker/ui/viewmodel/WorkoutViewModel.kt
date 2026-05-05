@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 
 class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
 
-    // Expose all sessions to the UI
     val allSessions: StateFlow<List<Session>> = repository.allSessions
         .stateIn(
             scope = viewModelScope,
@@ -23,7 +22,6 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             initialValue = emptyList()
         )
 
-    // --- Session Actions ---
     fun startNewSession(userId: Int, onSessionCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val newSession = Session(
@@ -35,11 +33,6 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         }
     }
 
-    /**
-     * Starts a new session only if the most recent session is not empty
-     * (has exercise logs). If the most recent session has no logs and was
-     * created within the last 4 hours, resume it instead to avoid duplicates.
-     */
     fun startNewSessionOrResume(userId: Int, onSessionReady: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val sessions = repository.allSessions.first()
@@ -52,13 +45,11 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             if (mostRecent != null && isRecent) {
                 val logs = repository.getLogsForSession(mostRecent.sessionId).first()
                 if (logs.isEmpty()) {
-                    // Resume the existing empty session
                     onSessionReady(mostRecent.sessionId.toLong())
                     return@launch
                 }
             }
 
-            // Create a brand new session
             val newSession = Session(
                 userId = userId,
                 date = System.currentTimeMillis()
@@ -74,7 +65,6 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         }
     }
 
-    // --- Exercise Log Actions ---
     fun getLogsForSession(sessionId: Int) = repository.getLogsForSession(sessionId)
 
     fun deleteLog(log: ExerciseLog) {
@@ -94,7 +84,6 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         }
     }
 
-    // --- Set Actions ---
     fun getSetsForLog(logId: Int) = repository.getSetsForLog(logId)
 
     fun addSetToLog(exerciseLogId: Int, weight: Float, reps: Int, order: Int, type: String) {
@@ -116,10 +105,58 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         }
     }
 
+    fun completeSet(setId: Int, isCompleted: Boolean) {
+        viewModelScope.launch {
+            repository.updateSetCompletion(setId, isCompleted)
+        }
+    }
+
+    fun getLastSetForExercise(exerciseId: Int, onResult: (Set?) -> Unit) {
+        viewModelScope.launch {
+            val lastSet = repository.getLastSetForExercise(exerciseId)
+            onResult(lastSet)
+        }
+    }
+
     fun deleteSet(set: Set) {
         viewModelScope.launch {
             repository.deleteSet(set)
         }
+    }
+
+    fun copySession(sessionId: Int, userId: Int = 1, onCopied: (Long) -> Unit) {
+        viewModelScope.launch {
+            val newSessionId = repository.copySession(sessionId, userId)
+            onCopied(newSessionId)
+        }
+    }
+
+    fun getSessionsForWeek(startOfWeek: Long): StateFlow<List<Session>> {
+        val endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000L) - 1
+        return repository.getSessionsBetweenDates(startOfWeek, endOfWeek)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    }
+
+    fun getSessionsForMonth(year: Int, month: Int): StateFlow<List<Session>> {
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val startOfMonth = calendar.timeInMillis
+        calendar.add(java.util.Calendar.MONTH, 1)
+        calendar.add(java.util.Calendar.MILLISECOND, -1)
+        val endOfMonth = calendar.timeInMillis
+
+        return repository.getSessionsBetweenDates(startOfMonth, endOfMonth)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
     }
 }
 

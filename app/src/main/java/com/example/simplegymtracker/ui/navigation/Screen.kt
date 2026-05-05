@@ -9,4 +9,5 @@ sealed class Screen(val route: String) {
     data object SessionHistory : Screen("session_history")
     data object ProgressChart : Screen("progress_chart")
     data object TimerConfig : Screen("timer_config")
+    data object Calendar : Screen("calendar")
 }

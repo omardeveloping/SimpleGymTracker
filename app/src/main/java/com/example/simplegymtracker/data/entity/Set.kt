@@ -21,5 +21,6 @@ data class Set(
     val weight: Float,
     val repetitions: Int,
     val setOrder: Int, // To keep track of the sequence (Set 1, Set 2, etc.)
-    val type: String // e.g., "Warm-up", "Working Set", "Drop Set"
+    val type: String, // e.g., "Warm-up", "Working Set", "Drop Set"
+    val isCompleted: Boolean = false
 )

@@ -1,5 +1,7 @@
 package com.example.simplegymtracker.ui.screens
 
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -20,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +33,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -61,14 +67,16 @@ fun TimerConfigScreen(
     var remainingTime by remember { mutableIntStateOf(0) }
     var totalTime by remember { mutableIntStateOf(0) }
     var timerLabel by remember { mutableStateOf("Rest between sets") }
+    var soundEnabled by remember { mutableStateOf(true) }
+    var currentProgress by remember { mutableFloatStateOf(1f) }
 
-    // Progress for circular indicator
-    var progress by remember { mutableFloatStateOf(0f) }
     val animatedProgress by animateFloatAsState(
-        targetValue = progress,
+        targetValue = currentProgress,
         animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
         label = "timerProgress"
     )
+
+    val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100) }
 
     LaunchedEffect(isTimerRunning, remainingTime, totalTime) {
         if (isTimerRunning && remainingTime > 0) {
@@ -76,12 +84,17 @@ fun TimerConfigScreen(
                 delay(1000L)
                 if (isTimerRunning) {
                     remainingTime -= 1
-                    progress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
+                    currentProgress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
+                    if (soundEnabled && remainingTime <= 5 && remainingTime > 0) {
+                        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
+                    }
                 }
             }
             if (remainingTime <= 0) {
                 isTimerRunning = false
-                progress = 0f
+                if (soundEnabled) {
+                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
+                }
             }
         }
     }
@@ -100,6 +113,15 @@ fun TimerConfigScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { soundEnabled = !soundEnabled }) {
+                        Icon(
+                            imageVector = if (soundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            contentDescription = if (soundEnabled) "Sound On" else "Sound Off",
+                            tint = if (soundEnabled) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -115,7 +137,6 @@ fun TimerConfigScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Timer Display with Circular Progress
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -130,7 +151,6 @@ fun TimerConfigScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Circular progress background
                     CircularProgressIndicator(
                         progress = { 1f },
                         modifier = Modifier.size(180.dp),
@@ -138,7 +158,6 @@ fun TimerConfigScreen(
                         strokeWidth = 8.dp,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-                    // Animated progress
                     CircularProgressIndicator(
                         progress = { animatedProgress },
                         modifier = Modifier.size(180.dp),
@@ -191,7 +210,6 @@ fun TimerConfigScreen(
                         val seconds = setRestTime.toIntOrNull() ?: 60
                         totalTime = seconds
                         remainingTime = seconds
-                        progress = 1f
                         isTimerRunning = true
                     },
                     modifier = Modifier.weight(1f)
@@ -203,7 +221,6 @@ fun TimerConfigScreen(
                         val seconds = exerciseRestTime.toIntOrNull() ?: 120
                         totalTime = seconds
                         remainingTime = seconds
-                        progress = 1f
                         isTimerRunning = true
                     },
                     modifier = Modifier.weight(1f)
@@ -227,7 +244,6 @@ fun TimerConfigScreen(
                     isTimerRunning = false
                     remainingTime = 0
                     totalTime = 0
-                    progress = 0f
                 },
                 modifier = Modifier.fillMaxWidth(),
                 isSecondary = true
@@ -242,6 +258,27 @@ fun TimerConfigScreen(
             )
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sound",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = soundEnabled,
+                    onCheckedChange = { soundEnabled = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = ElectricBlue,
+                        checkedTrackColor = ElectricBlue.copy(alpha = 0.5f)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = setRestTime,

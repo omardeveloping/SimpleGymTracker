@@ -19,11 +19,37 @@ class ExerciseViewModel(private val repository: ExerciseRepository) : ViewModel(
             initialValue = emptyList()
         )
 
-    fun addExercise(name: String, category: String, createdByUser: Boolean) {
+    fun getExercisesByCategory(category: String): StateFlow<List<Exercise>> {
+        return repository.getExercisesByCategory(category)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    }
+
+    fun getExercisesByEquipment(equipment: String): StateFlow<List<Exercise>> {
+        return repository.getExercisesByEquipment(equipment)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    }
+
+    fun addExercise(
+        name: String,
+        category: String,
+        equipment: String,
+        muscleGroup: String,
+        createdByUser: Boolean
+    ) {
         viewModelScope.launch {
             val newExercise = Exercise(
                 name = name,
                 category = category,
+                equipment = equipment,
+                muscleGroup = muscleGroup,
                 createdByUser = createdByUser
             )
             repository.insert(newExercise)

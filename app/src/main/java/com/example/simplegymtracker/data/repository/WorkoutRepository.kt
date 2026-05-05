@@ -7,18 +7,14 @@ import com.example.simplegymtracker.data.entity.ExerciseLog
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.data.entity.Set
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
-/**
- * Combined repository to handle the logic of a workout session,
- * including the logs and the sets performed.
- */
 class WorkoutRepository(
     private val sessionDao: SessionDao,
     private val logDao: ExerciseLogDao,
     private val setDao: SetDao
 ) {
 
-    // --- Session Operations ---
     val allSessions: Flow<List<Session>> = sessionDao.getAll()
 
     suspend fun startSession(session: Session): Long {
@@ -29,7 +25,10 @@ class WorkoutRepository(
         sessionDao.delete(session)
     }
 
-    // --- Log Operations ---
+    fun getSessionsBetweenDates(startDate: Long, endDate: Long): Flow<List<Session>> {
+        return sessionDao.getSessionsBetweenDates(startDate, endDate)
+    }
+
     fun getLogsForSession(sessionId: Int): Flow<List<ExerciseLog>> {
         return logDao.getLogsForSession(sessionId)
     }
@@ -42,9 +41,12 @@ class WorkoutRepository(
         logDao.delete(log)
     }
 
-    // --- Set Operations ---
     fun getSetsForLog(logId: Int): Flow<List<Set>> {
         return setDao.getSetsForLog(logId)
+    }
+
+    suspend fun getLastSetForExercise(exerciseId: Int): Set? {
+        return setDao.getLastSetForExercise(exerciseId)
     }
 
     suspend fun addSet(set: Set) {
@@ -55,7 +57,41 @@ class WorkoutRepository(
         setDao.update(set)
     }
 
+    suspend fun updateSetCompletion(setId: Int, isCompleted: Boolean) {
+        setDao.updateCompletion(setId, isCompleted)
+    }
+
     suspend fun deleteSet(set: Set) {
         setDao.delete(set)
+    }
+
+    suspend fun copySession(sessionId: Int, newUserId: Int): Long {
+        val sourceLogs = logDao.getLogsForSession(sessionId).first()
+        val newSession = Session(userId = newUserId, date = System.currentTimeMillis())
+        val newSessionId = sessionDao.insert(newSession)
+
+        for (sourceLog in sourceLogs) {
+            val newLog = ExerciseLog(
+                sessionId = newSessionId.toInt(),
+                exerciseId = sourceLog.exerciseId,
+                dateTime = System.currentTimeMillis()
+            )
+            val newLogId = logDao.insert(newLog).toInt()
+
+            val sourceSets = setDao.getSetsForLog(sourceLog.exerciseLogId).first()
+            for (sourceSet in sourceSets) {
+                val newSet = Set(
+                    exerciseLogId = newLogId,
+                    weight = sourceSet.weight,
+                    repetitions = sourceSet.repetitions,
+                    setOrder = sourceSet.setOrder,
+                    type = sourceSet.type,
+                    isCompleted = false
+                )
+                setDao.insert(newSet)
+            }
+        }
+
+        return newSessionId
     }
 }

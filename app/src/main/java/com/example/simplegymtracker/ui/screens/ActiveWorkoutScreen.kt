@@ -1,5 +1,6 @@
 package com.example.simplegymtracker.ui.screens
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,10 +23,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -40,7 +42,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -49,7 +50,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,14 +59,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.data.entity.ExerciseLog
 import com.example.simplegymtracker.data.entity.Set
+import com.example.simplegymtracker.ui.components.IntNumberPicker
+import com.example.simplegymtracker.ui.components.NumberPicker
+import com.example.simplegymtracker.ui.components.SwipeableSetRow
+import com.example.simplegymtracker.ui.components.UnitToggle
 import com.example.simplegymtracker.ui.theme.CardTintMint
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.RestTimerBg
@@ -84,7 +90,8 @@ fun ActiveWorkoutScreen(
     exerciseViewModelFactory: ExerciseViewModelFactory,
     onAddExercise: () -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToTimer: () -> Unit
+    onNavigateToTimer: () -> Unit,
+    preferredUnit: String = "kg"
 ) {
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val exerciseViewModel: ExerciseViewModel = viewModel(factory = exerciseViewModelFactory)
@@ -97,16 +104,6 @@ fun ActiveWorkoutScreen(
 
     val logs by workoutViewModel.getLogsForSession(sessionId.toInt()).collectAsState(initial = emptyList())
     val exercises by exerciseViewModel.allExercises.collectAsState()
-
-    // Animate exercise cards entrance
-    val visibleLogIndices = remember { mutableStateListOf<Int>() }
-    LaunchedEffect(logs.size) {
-        visibleLogIndices.clear()
-        logs.indices.forEach { index ->
-            kotlinx.coroutines.delay(80L * index)
-            visibleLogIndices.add(index)
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -166,17 +163,13 @@ fun ActiveWorkoutScreen(
 
             itemsIndexed(logs) { index, log ->
                 val exercise = exercises.find { it.exerciseId == log.exerciseId }
-                AnimatedVisibility(
-                    visible = index in visibleLogIndices,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 60 }
-                ) {
-                    ExerciseLogCard(
-                        log = log,
-                        exercise = exercise,
-                        workoutViewModel = workoutViewModel,
-                        onDeleteLog = { workoutViewModel.deleteLog(log) }
-                    )
-                }
+                ExerciseLogCard(
+                    log = log,
+                    exercise = exercise,
+                    workoutViewModel = workoutViewModel,
+                    preferredUnit = preferredUnit,
+                    onDeleteLog = { workoutViewModel.deleteLog(log) }
+                )
             }
 
             item {
@@ -221,11 +214,25 @@ fun ExerciseLogCard(
     log: ExerciseLog,
     exercise: Exercise?,
     workoutViewModel: WorkoutViewModel,
+    preferredUnit: String = "kg",
     onDeleteLog: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
     val sets by workoutViewModel.getSetsForLog(log.exerciseLogId).collectAsState(initial = emptyList())
     var showAddSet by remember { mutableStateOf(false) }
+    var lastSetWeight by remember { mutableFloatStateOf(0f) }
+    var lastSetReps by remember { mutableIntStateOf(8) }
+
+    LaunchedEffect(exercise?.exerciseId) {
+        if (exercise?.exerciseId != null) {
+            workoutViewModel.getLastSetForExercise(exercise.exerciseId) { set ->
+                set?.let {
+                    lastSetWeight = it.weight
+                    lastSetReps = it.repetitions
+                }
+            }
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -236,7 +243,6 @@ fun ExerciseLogCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Exercise Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -287,12 +293,11 @@ fun ExerciseLogCard(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     sets.forEachIndexed { index, set ->
-                        SetRow(
+                        SetRowWithSwipe(
                             set = set,
                             setNumber = index + 1,
-                            onUpdate = { updatedSet ->
-                                workoutViewModel.updateSet(updatedSet)
-                            }
+                            onComplete = { workoutViewModel.completeSet(set.setId, true) },
+                            onDelete = { workoutViewModel.deleteSet(set) }
                         )
                         if (index < sets.size - 1) {
                             Spacer(modifier = Modifier.height(4.dp))
@@ -305,6 +310,9 @@ fun ExerciseLogCard(
                         exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { 30 }
                     ) {
                         AddSetForm(
+                            initialWeight = lastSetWeight,
+                            initialReps = lastSetReps,
+                            preferredUnit = preferredUnit,
                             onAdd = { weight, reps, type ->
                                 workoutViewModel.addSetToLog(
                                     exerciseLogId = log.exerciseLogId,
@@ -313,6 +321,8 @@ fun ExerciseLogCard(
                                     order = sets.size + 1,
                                     type = type
                                 )
+                                lastSetWeight = weight
+                                lastSetReps = reps
                                 showAddSet = false
                             },
                             onCancel = { showAddSet = false }
@@ -329,7 +339,9 @@ fun ExerciseLogCard(
                             text = "+ Add Set",
                             color = ElectricBlue,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable { showAddSet = true }
+                            modifier = Modifier
+                                .clickable { showAddSet = true }
+                                .padding(8.dp)
                         )
                     }
                 }
@@ -339,12 +351,14 @@ fun ExerciseLogCard(
 }
 
 @Composable
-fun SetRow(
+fun SetRowWithSwipe(
     set: Set,
     setNumber: Int,
-    onUpdate: (Set) -> Unit
+    onComplete: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    var isComplete by remember { mutableStateOf(false) }
+    val view = LocalView.current
+    var isComplete by remember { mutableStateOf(set.isCompleted) }
     val statusColor = if (isComplete) SetComplete else SetPending
 
     val scale by animateFloatAsState(
@@ -353,93 +367,134 @@ fun SetRow(
         label = "checkScale"
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                RoundedCornerShape(8.dp)
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "$setNumber",
-            style = MaterialTheme.typography.labelLarge,
-            color = ElectricBlue,
-            modifier = Modifier.width(24.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "${set.weight}kg",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(60.dp)
-        )
-        Text(
-            text = "${set.repetitions} reps",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = set.type,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(80.dp)
-        )
-        IconButton(
-            onClick = {
-                isComplete = !isComplete
-                // Optionally persist completion state to DB if we add a field
-            },
-            modifier = Modifier.size(32.dp)
+    SwipeableSetRow(
+        onSwipeComplete = {
+            isComplete = true
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            onComplete()
+        },
+        onSwipeDelete = {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            onDelete()
+        }
+    ) { _, triggerAnim ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Complete",
-                tint = statusColor,
-                modifier = Modifier
-                    .size(20.dp)
-                    .scale(scale)
+            Text(
+                text = "$setNumber",
+                style = MaterialTheme.typography.labelLarge,
+                color = ElectricBlue,
+                modifier = Modifier.width(24.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${set.weight}kg",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.width(60.dp)
+            )
+            Text(
+                text = "${set.repetitions} reps",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = set.type,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(80.dp)
+            )
+            IconButton(
+                onClick = {
+                    if (!isComplete) {
+                        isComplete = true
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        triggerAnim()
+                        onComplete()
+                    }
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Complete",
+                    tint = statusColor,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .scale(scale)
+                )
+            }
         }
     }
 }
 
 @Composable
 fun AddSetForm(
+    initialWeight: Float = 0f,
+    initialReps: Int = 8,
+    preferredUnit: String = "kg",
     onAdd: (Float, Int, String) -> Unit,
     onCancel: () -> Unit
 ) {
-    var weight by remember { mutableStateOf("") }
-    var reps by remember { mutableStateOf("") }
+    var weight by remember { mutableFloatStateOf(if (initialWeight > 0) initialWeight else 20f) }
+    var reps by remember { mutableIntStateOf(if (initialReps > 0) initialReps else 8) }
     var type by remember { mutableStateOf("Working Set") }
+    var selectedUnit by remember { mutableStateOf(preferredUnit) }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(RestTimerBg, RoundedCornerShape(8.dp))
-            .padding(12.dp)
+            .padding(16.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = weight,
-                onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*$"))) weight = it },
-                label = { Text("Weight (kg)") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f)
-            )
-            OutlinedTextField(
-                value = reps,
-                onValueChange = { if (it.matches(Regex("^\\d*$"))) reps = it },
-                label = { Text("Reps") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            UnitToggle(
+                selectedUnit = selectedUnit,
+                onUnitChange = { selectedUnit = it }
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NumberPicker(
+                value = weight,
+                onValueChange = { weight = it },
+                range = 0f..300f,
+                steps = 0.5f,
+                label = "Weight"
+            )
+
+            IntNumberPicker(
+                value = reps,
+                onValueChange = { reps = it },
+                range = 1..100,
+                label = "Reps"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             SetTypeChip(
                 label = "Warm-up",
                 selected = type == "Warm-up",
@@ -456,8 +511,13 @@ fun AddSetForm(
                 onClick = { type = "Drop Set" }
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row {
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
             Text(
                 text = "Cancel",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -466,16 +526,14 @@ fun AddSetForm(
                     .padding(8.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            val isValid = (weight.toFloatOrNull() ?: 0f) > 0f && (reps.toIntOrNull() ?: 0) > 0
             Text(
                 text = "Add Set",
-                color = if (isValid) ElectricBlue else MaterialTheme.colorScheme.outline,
-                fontWeight = FontWeight.Medium,
+                color = ElectricBlue,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
-                    .clickable(enabled = isValid) {
-                        val w = weight.toFloatOrNull() ?: 0f
-                        val r = reps.toIntOrNull() ?: 0
-                        onAdd(w, r, type)
+                    .clickable {
+                        val finalWeight = if (selectedUnit == "lb") weight * 0.453592f else weight
+                        onAdd(finalWeight, reps, type)
                     }
                     .padding(8.dp)
             )
@@ -499,6 +557,6 @@ fun SetTypeChip(
         modifier = Modifier
             .background(backgroundColor, RoundedCornerShape(6.dp))
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     )
 }

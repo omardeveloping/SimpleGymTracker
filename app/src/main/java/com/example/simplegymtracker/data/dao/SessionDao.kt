@@ -12,6 +12,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE userId = :userId")
     fun getByUserId(userId: Int): Flow<List<Session>>
 
+    @Query("SELECT * FROM sessions WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun getSessionsBetweenDates(startDate: Long, endDate: Long): Flow<List<Session>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(session: Session): Long
 

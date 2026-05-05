@@ -19,4 +19,11 @@ class UserRepository(private val userDao: UserDao) {
     suspend fun getUserById(id: Int): User? {
         return userDao.getById(id)
     }
+
+    suspend fun updatePreferredUnit(userId: Int, unit: String) {
+        val user = userDao.getById(userId)
+        if (user != null) {
+            userDao.update(user.copy(preferredUnit = unit))
+        }
+    }
 }
