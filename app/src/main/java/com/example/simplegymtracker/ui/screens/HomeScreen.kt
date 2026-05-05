@@ -1,16 +1,11 @@
 package com.example.simplegymtracker.ui.screens
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,9 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,22 +51,32 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
+import com.example.simplegymtracker.ui.theme.CardTintLavender
+import com.example.simplegymtracker.ui.theme.CardTintMint
+import com.example.simplegymtracker.ui.theme.CardTintPeach
 import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import com.example.simplegymtracker.ui.viewmodel.UserViewModel
 import com.example.simplegymtracker.ui.viewmodel.UserViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +96,6 @@ fun HomeScreen(
     val recentSessions = sessions.take(3)
     var isStartingSession by remember { mutableStateOf(false) }
 
-    // Animated entrance for session cards
     val visibleCardIndices = remember { mutableStateListOf<Int>() }
     LaunchedEffect(recentSessions.size) {
         visibleCardIndices.clear()
@@ -99,6 +104,9 @@ fun HomeScreen(
             visibleCardIndices.add(index)
         }
     }
+
+    val streak = calculateStreak(sessions)
+    val greeting = getTimeBasedGreeting()
 
     Scaffold(
         topBar = {
@@ -134,12 +142,14 @@ fun HomeScreen(
                     }
                 },
                 containerColor = ElectricBlue,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.shadow(8.dp, RoundedCornerShape(16.dp))
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Start Workout",
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -149,25 +159,38 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                WelcomeCard()
-            }
-
-            item {
-                QuickStatsRow(
-                    workoutCount = sessions.size,
-                    onNavigateToProgress = onNavigateToProgress
+                HeroCard(
+                    greeting = greeting,
+                    streak = streak,
+                    onStartWorkout = {
+                        if (isStartingSession) return@HeroCard
+                        isStartingSession = true
+                        workoutViewModel.startNewSessionOrResume(userId = 1) { sessionId ->
+                            onStartWorkout(sessionId)
+                            isStartingSession = false
+                        }
+                    }
                 )
             }
 
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                QuickActionsGrid(
+                    onNavigateToHistory = onNavigateToHistory,
+                    onNavigateToProgress = onNavigateToProgress,
+                    onNavigateToTimer = onNavigateToTimer,
+                    onNavigateToCalendar = onNavigateToCalendar
+                )
+            }
+
+            item {
                 Text(
                     text = "Recent Sessions",
-                    style = MaterialTheme.typography.headlineSmall
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -195,138 +218,277 @@ fun HomeScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                TimerShortcutCard(onNavigateToTimer = onNavigateToTimer)
-            }
-
-            item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
+private fun getTimeBasedGreeting(): String {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    return when {
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        hour < 21 -> "Good evening"
+        else -> "Late night grind"
+    }
+}
+
+private fun calculateStreak(sessions: List<Session>): Int {
+    if (sessions.isEmpty()) return 0
+
+    val today = Calendar.getInstance()
+    today.set(Calendar.HOUR_OF_DAY, 0)
+    today.set(Calendar.MINUTE, 0)
+    today.set(Calendar.SECOND, 0)
+    today.set(Calendar.MILLISECOND, 0)
+    val todayStart = today.timeInMillis
+
+    val yesterdayStart = todayStart - TimeUnit.DAYS.toMillis(1)
+
+    val uniqueDays = sessions
+        .map { it.date }
+        .map { date ->
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = date
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            cal.timeInMillis
+        }
+        .distinct()
+        .sortedDescending()
+
+    if (uniqueDays.isEmpty()) return 0
+
+    val mostRecent = uniqueDays.first()
+
+    if (mostRecent < yesterdayStart) return 0
+
+    var streak = 1
+    for (i in 1 until uniqueDays.size) {
+        val expectedPrevious = mostRecent - TimeUnit.DAYS.toMillis(i.toLong())
+        if (uniqueDays[i] == expectedPrevious) {
+            streak++
+        } else {
+            break
+        }
+    }
+
+    return streak
+}
+
 @Composable
-private fun WelcomeCard() {
+private fun HeroCard(
+    greeting: String,
+    streak: Int,
+    onStartWorkout: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = CardTintSky
+            containerColor = Color.Transparent
         )
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(ElectricBlue, ElectricBlueDeep),
+                        start = Offset(0f, 0f),
+                        end = Offset(1f, 1f)
+                    ),
+                    RoundedCornerShape(20.dp)
+                )
+                .padding(24.dp)
         ) {
-            Text(
-                text = "Ready to crush it?",
-                style = MaterialTheme.typography.headlineSmall
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "$greeting!",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Ready to crush it?",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (streak > 0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Canvas(
+                                modifier = Modifier.size(16.dp)
+                            ) {
+                                drawCircle(
+                                    color = Color(0xFFFFB800),
+                                    radius = size.minDimension / 2
+                                )
+                            }
+                            Text(
+                                text = "$streak day streak",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                            .clickable(onClick = onStartWorkout)
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = null,
+                                tint = ElectricBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Start Workout",
+                                color = ElectricBlue,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionsGrid(
+    onNavigateToHistory: () -> Unit,
+    onNavigateToProgress: () -> Unit,
+    onNavigateToTimer: () -> Unit,
+    onNavigateToCalendar: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickActionCard(
+                icon = Icons.Default.History,
+                label = "History",
+                tint = CardTintMint,
+                iconColor = Color(0xFF166534),
+                onClick = onNavigateToHistory,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Tap the + button to start a new workout",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            QuickActionCard(
+                icon = Icons.AutoMirrored.Filled.ShowChart,
+                label = "Progress",
+                tint = CardTintLavender,
+                iconColor = Color(0xFF5B21B6),
+                onClick = onNavigateToProgress,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickActionCard(
+                icon = Icons.Default.Timer,
+                label = "Timer",
+                tint = CardTintPeach,
+                iconColor = Color(0xFF9A3412),
+                onClick = onNavigateToTimer,
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionCard(
+                icon = Icons.Default.CalendarMonth,
+                label = "Calendar",
+                tint = CardTintSky,
+                iconColor = Color(0xFF1E40AF),
+                onClick = onNavigateToCalendar,
+                modifier = Modifier.weight(1f)
             )
         }
     }
 }
 
 @Composable
-private fun QuickStatsRow(
-    workoutCount: Int,
-    onNavigateToProgress: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        QuickStatCard(
-            icon = Icons.Default.History,
-            label = "Workouts",
-            value = workoutCount,
-            modifier = Modifier.weight(1f)
-        )
-        QuickStatCard(
-                        icon = Icons.AutoMirrored.Filled.ShowChart,
-            label = "Progress",
-            value = null,
-            displayText = "View",
-            modifier = Modifier.weight(1f),
-            onClick = onNavigateToProgress
-        )
-    }
-}
-
-@Composable
-fun QuickStatCard(
+private fun QuickActionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
-    value: Int? = null,
-    displayText: String? = null,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
+    tint: Color,
+    iconColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(12.dp),
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = SurfaceSoft
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = ElectricBlue,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            if (value != null) {
-                AnimatedCounter(target = value)
-            } else {
-                Text(
-                    text = displayText ?: "—",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(tint),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = iconColor,
+                    modifier = Modifier.size(22.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
-    }
-}
-
-@Composable
-fun AnimatedCounter(target: Int) {
-    val animatedValue by animateIntAsState(
-        targetValue = target,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "counter"
-    )
-    AnimatedContent(
-        targetState = animatedValue,
-        transitionSpec = {
-            slideInVertically(tween(200)) { it } + fadeIn(tween(200)) togetherWith
-                    slideOutVertically(tween(200)) { -it } + fadeOut(tween(200))
-        },
-        label = "counterContent"
-    ) { value ->
-        Text(
-            text = value.toString(),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -347,103 +509,79 @@ private fun EmptySessionsState() {
 }
 
 @Composable
-private fun TimerShortcutCard(onNavigateToTimer: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToTimer() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = SurfaceSoft
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(CardTintSky),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Timer,
-                    contentDescription = "Timer",
-                    tint = ElectricBlue,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Rest Timer",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = "Configure and start countdown",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.Timer,
-                contentDescription = null,
-                tint = ElectricBlue
-            )
-        }
-    }
-}
-
-@Composable
 fun SessionCard(
     session: Session,
     onClick: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateString = dateFormat.format(Date(session.date))
+    val timeString = timeFormat.format(Date(session.date))
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = SurfaceSoft
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(CardTintSky),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.History,
+                    imageVector = Icons.Default.FitnessCenter,
                     contentDescription = "Session",
                     tint = ElectricBlue,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Workout Session",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Text(
-                    text = dateString,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = dateString,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp))
+                    )
+                    Text(
+                        text = timeString,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ShowChart,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

@@ -67,8 +67,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.data.entity.ExerciseLog
 import com.example.simplegymtracker.data.entity.Set
-import com.example.simplegymtracker.ui.components.IntNumberPicker
-import com.example.simplegymtracker.ui.components.NumberPicker
+import com.example.simplegymtracker.ui.components.NumericInputField
+import com.example.simplegymtracker.ui.components.NumericKeypad
+import com.example.simplegymtracker.ui.components.KeypadMode
 import com.example.simplegymtracker.ui.components.SwipeableSetRow
 import com.example.simplegymtracker.ui.components.UnitToggle
 import com.example.simplegymtracker.ui.theme.CardTintMint
@@ -448,10 +449,66 @@ fun AddSetForm(
     var type by remember { mutableStateOf("Working Set") }
     var selectedUnit by remember { mutableStateOf(preferredUnit) }
 
+    var showKeypad by remember { mutableStateOf(false) }
+    var activeField by remember { mutableStateOf<KeypadMode?>(null) }
+    var keypadInput by remember { mutableStateOf("") }
+
+    fun openKeypad(mode: KeypadMode) {
+        activeField = mode
+        keypadInput = when (mode) {
+            KeypadMode.WEIGHT -> weight.toString().trimEnd('0').trimEnd('.')
+            KeypadMode.REPS -> reps.toString()
+        }
+        showKeypad = true
+    }
+
+    fun handleDigit(digit: String) {
+        if (activeField == KeypadMode.WEIGHT) {
+            if (keypadInput.isEmpty() && digit == "0") return
+            if (keypadInput.contains('.') && keypadInput.substringAfter('.').length >= 1) return
+            keypadInput += digit
+        } else {
+            if (keypadInput.isEmpty() && digit == "0") return
+            if (keypadInput.length >= 3) return
+            keypadInput += digit
+        }
+    }
+
+    fun handleDecimal() {
+        if (activeField == KeypadMode.WEIGHT && !keypadInput.contains('.')) {
+            if (keypadInput.isEmpty()) keypadInput = "0"
+            keypadInput += "."
+        }
+    }
+
+    fun handleBackspace() {
+        if (keypadInput.isNotEmpty()) {
+            keypadInput = keypadInput.dropLast(1)
+        }
+    }
+
+    fun handleDone() {
+        if (keypadInput.isNotEmpty() && keypadInput != ".") {
+            when (activeField) {
+                KeypadMode.WEIGHT -> {
+                    val newValue = keypadInput.toFloatOrNull()?.coerceIn(0f, 300f)
+                    if (newValue != null) weight = newValue
+                }
+                KeypadMode.REPS -> {
+                    val newValue = keypadInput.toIntOrNull()?.coerceIn(1, 100)
+                    if (newValue != null) reps = newValue
+                }
+                null -> {}
+            }
+        }
+        showKeypad = false
+        activeField = null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(RestTimerBg, RoundedCornerShape(8.dp))
+            .background(RestTimerBg, RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Row(
@@ -464,26 +521,27 @@ fun AddSetForm(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NumberPicker(
-                value = weight,
-                onValueChange = { weight = it },
-                range = 0f..300f,
-                steps = 0.5f,
-                label = "Weight"
+            NumericInputField(
+                label = "Weight",
+                value = weight.toString().trimEnd('0').trimEnd('.'),
+                unit = "kg",
+                onClick = { openKeypad(KeypadMode.WEIGHT) },
+                modifier = Modifier.weight(1f)
             )
 
-            IntNumberPicker(
-                value = reps,
-                onValueChange = { reps = it },
-                range = 1..100,
-                label = "Reps"
+            NumericInputField(
+                label = "Reps",
+                value = reps.toString(),
+                unit = "reps",
+                onClick = { openKeypad(KeypadMode.REPS) },
+                modifier = Modifier.weight(1f)
             )
         }
 
@@ -539,6 +597,16 @@ fun AddSetForm(
             )
         }
     }
+
+    NumericKeypad(
+        visible = showKeypad,
+        currentValue = keypadInput.ifEmpty { "0" },
+        mode = activeField ?: KeypadMode.WEIGHT,
+        onDigitClick = { handleDigit(it) },
+        onDecimalClick = { handleDecimal() },
+        onBackspace = { handleBackspace() },
+        onDone = { handleDone() }
+    )
 }
 
 @Composable
