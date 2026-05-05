@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -28,11 +33,8 @@ import com.example.simplegymtracker.ui.screens.ProgressChartScreen
 import com.example.simplegymtracker.ui.screens.SessionHistoryScreen
 import com.example.simplegymtracker.ui.screens.TimerConfigScreen
 import com.example.simplegymtracker.ui.theme.SimpleGymTrackerTheme
-import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
-import com.example.simplegymtracker.ui.viewmodel.UserViewModel
 import com.example.simplegymtracker.ui.viewmodel.UserViewModelFactory
-import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -58,7 +60,6 @@ class MainActivity : ComponentActivity() {
         // Ensure a default user exists (required for foreign key constraint)
         lifecycleScope.launch {
             val users = userRepository.allUsers.first()
-            // If no users exist, create a default user
             if (users.isEmpty()) {
                 userRepository.insert(User(id = 0, name = "Default", lastName = "User"))
             }
@@ -109,6 +110,26 @@ fun AppNavHost(
     workoutViewModelFactory: WorkoutViewModelFactory,
     modifier: Modifier = Modifier
 ) {
+    val enterTransition = slideInHorizontally(
+        initialOffsetX = { it },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300))
+
+    val exitTransition = slideOutHorizontally(
+        targetOffsetX = { -it / 3 },
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300))
+
+    val popEnterTransition = slideInHorizontally(
+        initialOffsetX = { -it / 3 },
+        animationSpec = tween(300)
+    ) + fadeIn(animationSpec = tween(300))
+
+    val popExitTransition = slideOutHorizontally(
+        targetOffsetX = { it },
+        animationSpec = tween(300)
+    ) + fadeOut(animationSpec = tween(300))
+
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
@@ -133,7 +154,13 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.ExerciseSelector.route) {
+        composable(
+            route = Screen.ExerciseSelector.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) {
             ExerciseSelectorScreen(
                 exerciseViewModelFactory = exerciseViewModelFactory,
                 onExerciseSelected = { exerciseId ->
@@ -149,7 +176,13 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.ActiveWorkout.route) { backStackEntry ->
+        composable(
+            route = Screen.ActiveWorkout.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) { backStackEntry ->
             val sessionId = backStackEntry.arguments
                 ?.getString("sessionId")
                 ?.toLongOrNull() ?: 0L
@@ -174,7 +207,13 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.SessionHistory.route) {
+        composable(
+            route = Screen.SessionHistory.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) {
             SessionHistoryScreen(
                 workoutViewModelFactory = workoutViewModelFactory,
                 exerciseViewModelFactory = exerciseViewModelFactory,
@@ -187,7 +226,13 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.ProgressChart.route) {
+        composable(
+            route = Screen.ProgressChart.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) {
             ProgressChartScreen(
                 workoutViewModelFactory = workoutViewModelFactory,
                 exerciseViewModelFactory = exerciseViewModelFactory,
@@ -197,7 +242,13 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.TimerConfig.route) {
+        composable(
+            route = Screen.TimerConfig.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) {
             TimerConfigScreen(
                 onNavigateBack = {
                     navController.popBackStack()

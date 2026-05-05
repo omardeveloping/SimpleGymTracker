@@ -1,5 +1,10 @@
 package com.example.simplegymtracker.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,8 +39,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,13 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.ui.theme.CardTintMint
 import com.example.simplegymtracker.ui.theme.CardTintPeach
 import com.example.simplegymtracker.ui.theme.CardTintRose
 import com.example.simplegymtracker.ui.theme.CardTintSky
+import com.example.simplegymtracker.ui.theme.CardTintYellow
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
@@ -74,10 +81,25 @@ fun ExerciseSelectorScreen(
 
     val displayExercises = if (searchQuery.isEmpty()) exercises else filteredExercises
 
+    // Animate list entrance
+    val visibleIndices = remember { mutableStateListOf<Int>() }
+    LaunchedEffect(displayExercises.size, searchQuery) {
+        visibleIndices.clear()
+        displayExercises.indices.forEach { index ->
+            kotlinx.coroutines.delay(30L * index.coerceAtMost(15)) // cap delay for large lists
+            visibleIndices.add(index)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Select Exercise", fontSize = 20.sp, fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Text(
+                        "Select Exercise",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -97,7 +119,7 @@ fun ExerciseSelectorScreen(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add Custom Exercise",
-                    tint = androidx.compose.ui.graphics.Color.White
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -110,14 +132,17 @@ fun ExerciseSelectorScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Search exercises...") },
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = androidx.compose.ui.graphics.Color.Gray)
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -125,14 +150,28 @@ fun ExerciseSelectorScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(displayExercises) { exercise ->
-                    ExerciseCard(
-                        exercise = exercise,
-                        onClick = { onExerciseSelected(exercise.exerciseId) }
-                    )
+            if (displayExercises.isEmpty()) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
+                ) {
+                    EmptyExerciseState(searchQuery = searchQuery)
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(displayExercises) { index, exercise ->
+                        AnimatedVisibility(
+                            visible = index in visibleIndices,
+                            enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { 30 }
+                        ) {
+                            ExerciseCard(
+                                exercise = exercise,
+                                onClick = { onExerciseSelected(exercise.exerciseId) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -150,6 +189,36 @@ fun ExerciseSelectorScreen(
 }
 
 @Composable
+private fun EmptyExerciseState(searchQuery: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 64.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = if (searchQuery.isEmpty()) "No exercises found" else "No matches for \"$searchQuery\"",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = if (searchQuery.isEmpty()) "Add your first custom exercise" else "Try a different search",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 fun ExerciseCard(
     exercise: Exercise,
     onClick: () -> Unit
@@ -159,8 +228,8 @@ fun ExerciseCard(
         "legs" -> CardTintMint
         "back" -> CardTintSky
         "shoulders" -> CardTintRose
-        "arms" -> androidx.compose.ui.graphics.Color(0xFFFEF7D6)
-        else -> androidx.compose.ui.graphics.Color(0xFFF0EEEC)
+        "arms" -> CardTintYellow
+        else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
     Card(
@@ -169,7 +238,7 @@ fun ExerciseCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -194,26 +263,21 @@ fun ExerciseCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exercise.name ?: "Unnamed Exercise",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.titleLarge
                 )
                 Text(
                     text = exercise.category ?: "General",
-                    fontSize = 13.sp,
-                    color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (exercise.createdByUser) {
                 Text(
                     text = "Custom",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     color = ElectricBlue,
-                    fontWeight = FontWeight.Medium,
                     modifier = Modifier
-                        .background(
-                            androidx.compose.ui.graphics.Color(0xFFDCECFA),
-                            RoundedCornerShape(4.dp)
-                        )
+                        .background(CardTintSky, RoundedCornerShape(4.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -231,7 +295,7 @@ fun AddExerciseDialog(
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Custom Exercise") },
+        title = { Text("Create Custom Exercise", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column {
                 OutlinedTextField(
@@ -255,12 +319,12 @@ fun AddExerciseDialog(
             androidx.compose.material3.TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name, category) }
             ) {
-                Text("Add", color = ElectricBlue)
+                Text("Add", color = ElectricBlue, style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", style = MaterialTheme.typography.labelLarge)
             }
         }
     )

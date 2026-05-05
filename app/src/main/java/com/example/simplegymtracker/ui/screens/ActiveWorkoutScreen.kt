@@ -1,5 +1,14 @@
 package com.example.simplegymtracker.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +23,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -30,7 +40,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,13 +49,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,7 +89,6 @@ fun ActiveWorkoutScreen(
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val exerciseViewModel: ExerciseViewModel = viewModel(factory = exerciseViewModelFactory)
 
-    // Handle selected exercise from ExerciseSelector
     LaunchedEffect(selectedExerciseId) {
         if (selectedExerciseId != null && selectedExerciseId != -1) {
             workoutViewModel.addExerciseToSession(sessionId.toInt(), selectedExerciseId)
@@ -87,10 +98,25 @@ fun ActiveWorkoutScreen(
     val logs by workoutViewModel.getLogsForSession(sessionId.toInt()).collectAsState(initial = emptyList())
     val exercises by exerciseViewModel.allExercises.collectAsState()
 
+    // Animate exercise cards entrance
+    val visibleLogIndices = remember { mutableStateListOf<Int>() }
+    LaunchedEffect(logs.size) {
+        visibleLogIndices.clear()
+        logs.indices.forEach { index ->
+            kotlinx.coroutines.delay(80L * index)
+            visibleLogIndices.add(index)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Active Workout", fontSize = 20.sp, fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Text(
+                        "Active Workout",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -119,7 +145,7 @@ fun ActiveWorkoutScreen(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add Exercise",
-                    tint = androidx.compose.ui.graphics.Color.White
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -134,48 +160,58 @@ fun ActiveWorkoutScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 if (logs.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 64.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = null,
-                                tint = SetPending,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "No exercises yet",
-                                fontSize = 16.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
-                            )
-                            Text(
-                                text = "Tap + to add an exercise",
-                                fontSize = 14.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF787671)
-                            )
-                        }
-                    }
+                    EmptyWorkoutState()
                 }
             }
 
-            items(logs) { log ->
+            itemsIndexed(logs) { index, log ->
                 val exercise = exercises.find { it.exerciseId == log.exerciseId }
-                ExerciseLogCard(
-                    log = log,
-                    exercise = exercise,
-                    workoutViewModel = workoutViewModel,
-                    onDeleteLog = { workoutViewModel.deleteLog(log) }
-                )
+                AnimatedVisibility(
+                    visible = index in visibleLogIndices,
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 60 }
+                ) {
+                    ExerciseLogCard(
+                        log = log,
+                        exercise = exercise,
+                        workoutViewModel = workoutViewModel,
+                        onDeleteLog = { workoutViewModel.deleteLog(log) }
+                    )
+                }
             }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyWorkoutState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 64.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
+                tint = SetPending,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No exercises yet",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Tap + to add an exercise",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -195,7 +231,7 @@ fun ExerciseLogCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -225,63 +261,77 @@ fun ExerciseLogCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = exercise?.name ?: "Unknown Exercise",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Text(
                         text = "${sets.size} sets",
-                        fontSize = 13.sp,
-                        color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onDeleteLog) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = androidx.compose.ui.graphics.Color(0xFFE03131)
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }
 
-            if (expanded) {
-                Spacer(modifier = Modifier.height(12.dp))
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { -20 },
+                exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { -20 }
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                // Sets List
-                sets.forEachIndexed { index, set ->
-                    SetRow(
-                        set = set,
-                        setNumber = index + 1,
-                        onUpdate = { updatedSet ->
-                            workoutViewModel.updateSet(updatedSet)
+                    sets.forEachIndexed { index, set ->
+                        SetRow(
+                            set = set,
+                            setNumber = index + 1,
+                            onUpdate = { updatedSet ->
+                                workoutViewModel.updateSet(updatedSet)
+                            }
+                        )
+                        if (index < sets.size - 1) {
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
-                    )
-                    if (index < sets.size - 1) {
-                        Spacer(modifier = Modifier.height(4.dp))
                     }
-                }
 
-                if (showAddSet) {
-                    AddSetForm(
-                        onAdd = { weight, reps, type ->
-                            workoutViewModel.addSetToLog(
-                                exerciseLogId = log.exerciseLogId,
-                                weight = weight,
-                                reps = reps,
-                                order = sets.size + 1,
-                                type = type
-                            )
-                            showAddSet = false
-                        },
-                        onCancel = { showAddSet = false }
-                    )
-                } else {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "+ Add Set",
-                        color = ElectricBlue,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clickable { showAddSet = true }
-                    )
+                    AnimatedVisibility(
+                        visible = showAddSet,
+                        enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { 30 },
+                        exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { 30 }
+                    ) {
+                        AddSetForm(
+                            onAdd = { weight, reps, type ->
+                                workoutViewModel.addSetToLog(
+                                    exerciseLogId = log.exerciseLogId,
+                                    weight = weight,
+                                    reps = reps,
+                                    order = sets.size + 1,
+                                    type = type
+                                )
+                                showAddSet = false
+                            },
+                            onCancel = { showAddSet = false }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = !showAddSet,
+                        enter = fadeIn(tween(200)),
+                        exit = fadeOut(tween(150))
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "+ Add Set",
+                            color = ElectricBlue,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clickable { showAddSet = true }
+                        )
+                    }
                 }
             }
         }
@@ -297,11 +347,17 @@ fun SetRow(
     var isComplete by remember { mutableStateOf(false) }
     val statusColor = if (isComplete) SetComplete else SetPending
 
+    val scale by animateFloatAsState(
+        targetValue = if (isComplete) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label = "checkScale"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                androidx.compose.ui.graphics.Color(0xFFFAFAF9),
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 RoundedCornerShape(8.dp)
             )
             .padding(12.dp),
@@ -309,37 +365,41 @@ fun SetRow(
     ) {
         Text(
             text = "$setNumber",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelLarge,
             color = ElectricBlue,
             modifier = Modifier.width(24.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "${set.weight}kg",
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(60.dp)
         )
         Text(
             text = "${set.repetitions} reps",
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = set.type,
-            fontSize = 12.sp,
-            color = androidx.compose.ui.graphics.Color(0xFF787671),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(80.dp)
         )
         IconButton(
-            onClick = { isComplete = !isComplete },
+            onClick = {
+                isComplete = !isComplete
+                // Optionally persist completion state to DB if we add a field
+            },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = "Complete",
                 tint = statusColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
+                    .scale(scale)
             )
         }
     }
@@ -363,18 +423,18 @@ fun AddSetForm(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = weight,
-                onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*\$"))) weight = it },
+                onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*$"))) weight = it },
                 label = { Text("Weight (kg)") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f)
             )
             OutlinedTextField(
                 value = reps,
-                onValueChange = { if (it.matches(Regex("^\\d*\$"))) reps = it },
+                onValueChange = { if (it.matches(Regex("^\\d*$"))) reps = it },
                 label = { Text("Reps") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -400,7 +460,7 @@ fun AddSetForm(
         Row {
             Text(
                 text = "Cancel",
-                color = androidx.compose.ui.graphics.Color(0xFF5D5B54),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .clickable { onCancel() }
                     .padding(8.dp)
@@ -409,7 +469,7 @@ fun AddSetForm(
             val isValid = (weight.toFloatOrNull() ?: 0f) > 0f && (reps.toIntOrNull() ?: 0) > 0
             Text(
                 text = "Add Set",
-                color = if (isValid) ElectricBlue else androidx.compose.ui.graphics.Color(0xFFBBB8B1),
+                color = if (isValid) ElectricBlue else MaterialTheme.colorScheme.outline,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .clickable(enabled = isValid) {
@@ -429,13 +489,12 @@ fun SetTypeChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (selected) ElectricBlue else androidx.compose.ui.graphics.Color(0xFFF0EEEC)
-    val textColor = if (selected) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color(0xFF37352F)
+    val backgroundColor = if (selected) ElectricBlue else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
 
     Text(
         text = label,
-        fontSize = 12.sp,
-        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+        style = MaterialTheme.typography.labelLarge,
         color = textColor,
         modifier = Modifier
             .background(backgroundColor, RoundedCornerShape(6.dp))

@@ -1,5 +1,8 @@
 package com.example.simplegymtracker.ui.screens
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +35,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,19 +59,29 @@ fun TimerConfigScreen(
     var exerciseRestTime by remember { mutableStateOf("120") }
     var isTimerRunning by remember { mutableStateOf(false) }
     var remainingTime by remember { mutableIntStateOf(0) }
+    var totalTime by remember { mutableIntStateOf(0) }
     var timerLabel by remember { mutableStateOf("Rest between sets") }
 
-    // Countdown logic
-    LaunchedEffect(isTimerRunning) {
+    // Progress for circular indicator
+    var progress by remember { mutableFloatStateOf(0f) }
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1000, easing = LinearEasing),
+        label = "timerProgress"
+    )
+
+    LaunchedEffect(isTimerRunning, remainingTime, totalTime) {
         if (isTimerRunning && remainingTime > 0) {
             while (remainingTime > 0 && isTimerRunning) {
                 delay(1000L)
                 if (isTimerRunning) {
                     remainingTime -= 1
+                    progress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
                 }
             }
             if (remainingTime <= 0) {
                 isTimerRunning = false
+                progress = 0f
             }
         }
     }
@@ -74,7 +89,12 @@ fun TimerConfigScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rest Timer", fontSize = 20.sp, fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Text(
+                        "Rest Timer",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -95,11 +115,11 @@ fun TimerConfigScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Timer Display
+            // Timer Display with Circular Progress
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp),
+                    .height(260.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = RestTimerBg
@@ -110,31 +130,48 @@ fun TimerConfigScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Circular progress background
+                    CircularProgressIndicator(
+                        progress = { 1f },
+                        modifier = Modifier.size(180.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        strokeWidth = 8.dp,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    // Animated progress
+                    CircularProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.size(180.dp),
+                        color = RestTimerAccent,
+                        strokeWidth = 8.dp,
+                        trackColor = androidx.compose.ui.graphics.Color.Transparent
+                    )
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.Timer,
                             contentDescription = null,
                             tint = RestTimerAccent,
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
-                            fontSize = 56.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = RestTimerAccent
+                            modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
+                            text = if (isTimerRunning || remainingTime > 0) formatTime(remainingTime) else "00:00",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RestTimerAccent
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
                             text = timerLabel,
-                            fontSize = 14.sp,
-                            color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (!isTimerRunning && remainingTime == 0) {
                             Text(
                                 text = "Tap Start to begin",
-                                fontSize = 13.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF787671)
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -143,7 +180,6 @@ fun TimerConfigScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Timer Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -152,7 +188,10 @@ fun TimerConfigScreen(
                     label = "Start Set Rest",
                     onClick = {
                         timerLabel = "Rest between sets"
-                        remainingTime = setRestTime.toIntOrNull() ?: 60
+                        val seconds = setRestTime.toIntOrNull() ?: 60
+                        totalTime = seconds
+                        remainingTime = seconds
+                        progress = 1f
                         isTimerRunning = true
                     },
                     modifier = Modifier.weight(1f)
@@ -161,7 +200,10 @@ fun TimerConfigScreen(
                     label = "Start Exercise Rest",
                     onClick = {
                         timerLabel = "Rest between exercises"
-                        remainingTime = exerciseRestTime.toIntOrNull() ?: 120
+                        val seconds = exerciseRestTime.toIntOrNull() ?: 120
+                        totalTime = seconds
+                        remainingTime = seconds
+                        progress = 1f
                         isTimerRunning = true
                     },
                     modifier = Modifier.weight(1f)
@@ -171,7 +213,7 @@ fun TimerConfigScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             TimerButton(
-                label = if (isTimerRunning) "Pause" else "Resume",
+                label = if (isTimerRunning) "Pause" else if (remainingTime > 0) "Resume" else "Start",
                 onClick = { isTimerRunning = !isTimerRunning },
                 modifier = Modifier.fillMaxWidth(),
                 isSecondary = true
@@ -184,6 +226,8 @@ fun TimerConfigScreen(
                 onClick = {
                     isTimerRunning = false
                     remainingTime = 0
+                    totalTime = 0
+                    progress = 0f
                 },
                 modifier = Modifier.fillMaxWidth(),
                 isSecondary = true
@@ -191,11 +235,9 @@ fun TimerConfigScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Configuration
             Text(
                 text = "Timer Configuration",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.align(Alignment.Start)
             )
 
@@ -231,8 +273,8 @@ fun TimerButton(
     modifier: Modifier = Modifier,
     isSecondary: Boolean = false
 ) {
-    val backgroundColor = if (isSecondary) androidx.compose.ui.graphics.Color.White else ElectricBlue
-    val textColor = if (isSecondary) ElectricBlue else androidx.compose.ui.graphics.Color.White
+    val backgroundColor = if (isSecondary) MaterialTheme.colorScheme.surface else ElectricBlue
+    val textColor = if (isSecondary) ElectricBlue else MaterialTheme.colorScheme.onPrimary
     val border = if (isSecondary) BorderStroke(1.dp, ElectricBlue) else null
 
     Card(
@@ -249,8 +291,7 @@ fun TimerButton(
         ) {
             Text(
                 text = label,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelLarge,
                 color = textColor
             )
         }

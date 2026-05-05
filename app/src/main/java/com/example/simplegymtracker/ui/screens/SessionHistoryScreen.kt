@@ -1,5 +1,9 @@
 package com.example.simplegymtracker.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,14 +35,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.ui.theme.CardTintSky
@@ -61,10 +66,25 @@ fun SessionHistoryScreen(
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val sessions by workoutViewModel.allSessions.collectAsState()
 
+    // Animate card entrances
+    val visibleIndices = remember { mutableStateListOf<Int>() }
+    LaunchedEffect(sessions.size) {
+        visibleIndices.clear()
+        sessions.indices.forEach { index ->
+            kotlinx.coroutines.delay(60L * index)
+            visibleIndices.add(index)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Session History", fontSize = 20.sp, fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Text(
+                        "Session History",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -86,45 +106,55 @@ fun SessionHistoryScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 if (sessions.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 64.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = null,
-                                tint = androidx.compose.ui.graphics.Color(0xFFBBB8B1),
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "No sessions yet",
-                                fontSize = 16.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
-                            )
-                            Text(
-                                text = "Complete a workout to see it here",
-                                fontSize = 14.sp,
-                                color = androidx.compose.ui.graphics.Color(0xFF787671)
-                            )
-                        }
-                    }
+                    EmptyHistoryState()
                 }
             }
 
-            items(sessions) { session ->
-                HistorySessionCard(
-                    session = session,
-                    onCopy = { onCopySession(session.sessionId) }
-                )
+            itemsIndexed(sessions) { index, session ->
+                AnimatedVisibility(
+                    visible = index in visibleIndices,
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 50 }
+                ) {
+                    HistorySessionCard(
+                        session = session,
+                        onCopy = { onCopySession(session.sessionId) }
+                    )
+                }
             }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyHistoryState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 64.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No sessions yet",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Complete a workout to see it here",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -143,7 +173,7 @@ fun HistorySessionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -169,13 +199,12 @@ fun HistorySessionCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = dateString,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleLarge
                     )
                     Text(
                         text = timeString,
-                        fontSize = 13.sp,
-                        color = androidx.compose.ui.graphics.Color(0xFF5D5B54)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onCopy) {
