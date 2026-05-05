@@ -9,6 +9,7 @@ import com.example.simplegymtracker.data.entity.Set
 import com.example.simplegymtracker.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -31,6 +32,39 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             )
             val sessionId = repository.startSession(newSession)
             onSessionCreated(sessionId)
+        }
+    }
+
+    /**
+     * Starts a new session only if the most recent session is not empty
+     * (has exercise logs). If the most recent session has no logs and was
+     * created within the last 4 hours, resume it instead to avoid duplicates.
+     */
+    fun startNewSessionOrResume(userId: Int, onSessionReady: (Long) -> Unit = {}) {
+        viewModelScope.launch {
+            val sessions = repository.allSessions.first()
+            val mostRecent = sessions.maxByOrNull { it.date }
+
+            val fourHoursInMs = 4 * 60 * 60 * 1000L
+            val isRecent = mostRecent != null &&
+                    (System.currentTimeMillis() - mostRecent.date) < fourHoursInMs
+
+            if (mostRecent != null && isRecent) {
+                val logs = repository.getLogsForSession(mostRecent.sessionId).first()
+                if (logs.isEmpty()) {
+                    // Resume the existing empty session
+                    onSessionReady(mostRecent.sessionId.toLong())
+                    return@launch
+                }
+            }
+
+            // Create a brand new session
+            val newSession = Session(
+                userId = userId,
+                date = System.currentTimeMillis()
+            )
+            val sessionId = repository.startSession(newSession)
+            onSessionReady(sessionId)
         }
     }
 

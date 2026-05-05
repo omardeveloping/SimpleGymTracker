@@ -116,7 +116,7 @@ fun HomeScreen(
                 onClick = {
                     if (isStartingSession) return@FloatingActionButton
                     isStartingSession = true
-                    workoutViewModel.startNewSession(userId = 1) { sessionId ->
+                    workoutViewModel.startNewSessionOrResume(userId = 1) { sessionId ->
                         onStartWorkout(sessionId)
                         isStartingSession = false
                     }
