@@ -692,26 +692,33 @@ private fun FinishWorkoutDialog(
 ) {
     val logs by workoutViewModel.getLogsForSession(sessionId).collectAsState(initial = emptyList())
 
-    val workoutStats = produceState(initialValue = Pair(0, 0), logs) {
+    data class WorkoutSummary(val totalExercises: Int, val completedExercises: Int, val totalSets: Int, val completedSets: Int)
+
+    val workoutStats = produceState(initialValue = WorkoutSummary(0, 0, 0, 0), logs) {
         if (logs.isEmpty()) {
-            value = Pair(0, 0)
+            value = WorkoutSummary(0, 0, 0, 0)
             return@produceState
         }
 
         var totalSets = 0
         var completedSets = 0
+        var completedExercises = 0
 
         for (log in logs) {
             val sets = workoutViewModel.getSetsForLog(log.exerciseLogId).first()
+            val exerciseCompleted = sets.count { it.isCompleted }
             totalSets += sets.size
-            completedSets += sets.count { it.isCompleted }
+            completedSets += exerciseCompleted
+            if (exerciseCompleted > 0) completedExercises++
         }
 
-        value = Pair(totalSets, completedSets)
+        value = WorkoutSummary(logs.size, completedExercises, totalSets, completedSets)
     }
 
-    val totalSets = workoutStats.value.first
-    val completedSets = workoutStats.value.second
+    val totalExercises = workoutStats.value.totalExercises
+    val completedExercises = workoutStats.value.completedExercises
+    val totalSets = workoutStats.value.totalSets
+    val completedSets = workoutStats.value.completedSets
     val completionRate = if (totalSets > 0) (completedSets * 100 / totalSets) else 0
     val hasNoSets = totalSets == 0
     val lowCompletion = completionRate < 50
@@ -755,7 +762,7 @@ private fun FinishWorkoutDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    StatMini(label = "Exercises", value = logs.size.toString())
+                    StatMini(label = "Exercises", value = if (completedExercises > 0) "$totalExercises ($completedExercises done)" else "$totalExercises")
                     StatMini(label = "Sets", value = "$completedSets/$totalSets")
                     StatMini(label = "Completed", value = "$completionRate%")
                 }
