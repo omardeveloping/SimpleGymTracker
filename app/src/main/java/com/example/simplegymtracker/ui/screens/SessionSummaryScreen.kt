@@ -54,14 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
-import com.example.simplegymtracker.ui.theme.CardTintLavender
-import com.example.simplegymtracker.ui.theme.CardTintMint
-import com.example.simplegymtracker.ui.theme.CardTintPeach
-import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.Hairline
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.theme.StreakGold
-import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import com.example.simplegymtracker.ui.viewmodel.MonthlyStats
 import com.example.simplegymtracker.ui.viewmodel.SessionStats
 import com.example.simplegymtracker.ui.viewmodel.WeeklyStats
@@ -76,6 +72,7 @@ fun SessionSummaryScreen(
     onNavigateBack: () -> Unit,
     onNavigateHome: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
 
     var sessionStats by remember { mutableStateOf<SessionStats?>(null) }
@@ -157,14 +154,14 @@ fun SessionSummaryScreen(
                         icon = Icons.Default.FitnessCenter,
                         label = "Exercises",
                         value = stats.totalExercises.toString(),
-                        tint = CardTintMint,
+                        tint = colors.cardTintMint,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryStatCard(
                         icon = Icons.Default.Repeat,
                         label = "Sets",
                         value = stats.totalSets.toString(),
-                        tint = CardTintSky,
+                        tint = colors.cardTintSky,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -179,14 +176,14 @@ fun SessionSummaryScreen(
                         icon = Icons.Default.Speed,
                         label = "Volume",
                         value = formatVolume(stats.totalVolume),
-                        tint = CardTintLavender,
+                        tint = colors.cardTintLavender,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryStatCard(
                         icon = Icons.Default.LocalFireDepartment,
                         label = "Reps",
                         value = stats.totalReps.toString(),
-                        tint = CardTintPeach,
+                        tint = colors.cardTintPeach,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -196,7 +193,7 @@ fun SessionSummaryScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
@@ -270,7 +267,7 @@ fun SessionSummaryScreen(
                     .fillMaxWidth()
                     .height(200.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Box(
@@ -329,7 +326,7 @@ private fun SummaryStatCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -411,7 +408,7 @@ private fun WeeklySummaryCard(stats: WeeklyStats) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -451,7 +448,7 @@ private fun MonthlySummaryCard(stats: MonthlyStats) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

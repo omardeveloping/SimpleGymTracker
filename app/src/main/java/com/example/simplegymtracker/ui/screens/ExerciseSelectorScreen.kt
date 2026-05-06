@@ -47,11 +47,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Exercise
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.CardTintMint
-import com.example.simplegymtracker.ui.theme.CardTintPeach
-import com.example.simplegymtracker.ui.theme.CardTintRose
-import com.example.simplegymtracker.ui.theme.CardTintSky
-import com.example.simplegymtracker.ui.theme.CardTintYellow
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
 
@@ -235,13 +232,14 @@ fun ExerciseCard(
     exercise: Exercise,
     onClick: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val categoryColor = when (exercise.muscleGroup?.lowercase()) {
-        "chest" -> CardTintPeach
-        "legs" -> CardTintMint
-        "back" -> CardTintSky
-        "shoulders" -> CardTintRose
-        "arms" -> CardTintYellow
-        "core" -> CardTintMint
+        "chest" -> colors.cardTintPeach
+        "legs" -> colors.cardTintMint
+        "back" -> colors.cardTintSky
+        "shoulders" -> colors.cardTintRose
+        "arms" -> colors.cardTintYellow
+        "core" -> colors.cardTintMint
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
@@ -299,7 +297,7 @@ fun ExerciseCard(
                     style = MaterialTheme.typography.labelMedium,
                     color = ElectricBlue,
                     modifier = Modifier
-                        .background(CardTintSky, RoundedCornerShape(4.dp))
+                        .background(colors.cardTintSky, RoundedCornerShape(4.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }

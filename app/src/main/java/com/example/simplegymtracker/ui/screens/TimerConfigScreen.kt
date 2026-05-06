@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.sp
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
-import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,7 +184,7 @@ fun TimerConfigScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(
@@ -373,7 +372,7 @@ private fun TimerPresetButton(
             .height(80.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(

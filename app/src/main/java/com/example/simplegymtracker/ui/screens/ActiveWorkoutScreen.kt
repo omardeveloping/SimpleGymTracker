@@ -76,9 +76,8 @@ import com.example.simplegymtracker.data.entity.Set
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
 import com.example.simplegymtracker.ui.components.SwipeableSetRow
 import com.example.simplegymtracker.ui.components.UnitToggle
-import com.example.simplegymtracker.ui.theme.CardTintMint
 import com.example.simplegymtracker.ui.theme.ElectricBlue
-import com.example.simplegymtracker.ui.theme.RestTimerBg
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.theme.SetComplete
 import com.example.simplegymtracker.ui.theme.SetPending
 import com.example.simplegymtracker.ui.theme.WarningOrange
@@ -240,6 +239,7 @@ fun ExerciseLogCard(
     preferredUnit: String = "kg",
     onDeleteLog: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     var expanded by remember { mutableStateOf(true) }
     val sets by workoutViewModel.getSetsForLog(log.exerciseLogId).collectAsState(initial = emptyList())
     var showAddSet by remember { mutableStateOf(false) }
@@ -276,7 +276,7 @@ fun ExerciseLogCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(CardTintMint),
+                        .background(colors.cardTintMint),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -501,6 +501,7 @@ fun AddSetForm(
     onAdd: (Float, Int, String) -> Unit,
     onCancel: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val isCardio = exerciseCategory == "Cardio"
     val unitType = if (isCardio) "distance" else "weight"
     val defaultDistance = if (preferredUnit == "mi") 1.0f else 1.6f
@@ -539,7 +540,7 @@ fun AddSetForm(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(RestTimerBg, RoundedCornerShape(12.dp))
+            .background(colors.restTimerBg, RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Row(

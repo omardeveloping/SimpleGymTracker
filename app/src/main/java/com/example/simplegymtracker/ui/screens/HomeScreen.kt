@@ -55,18 +55,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
-import com.example.simplegymtracker.ui.theme.CardTintLavender
-import com.example.simplegymtracker.ui.theme.CardTintMint
-import com.example.simplegymtracker.ui.theme.CardTintPeach
-import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.theme.StreakGold
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
-import com.example.simplegymtracker.ui.theme.IconGreen
-import com.example.simplegymtracker.ui.theme.IconPurple
-import com.example.simplegymtracker.ui.theme.IconOrange
-import com.example.simplegymtracker.ui.theme.IconBlue
 import com.example.simplegymtracker.ui.viewmodel.UserViewModel
 import com.example.simplegymtracker.ui.viewmodel.UserViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
@@ -370,6 +363,7 @@ private fun QuickActionsGrid(
     onNavigateToTimer: () -> Unit,
     onNavigateToCalendar: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -380,16 +374,16 @@ private fun QuickActionsGrid(
             QuickActionCard(
                 icon = Icons.Default.History,
                 label = "History",
-                tint = CardTintMint,
-                iconColor = IconGreen,
+                tint = colors.cardTintMint,
+                iconColor = colors.iconGreen,
                 onClick = onNavigateToHistory,
                 modifier = Modifier.weight(1f)
             )
             QuickActionCard(
                 icon = Icons.AutoMirrored.Filled.ShowChart,
                 label = "Progress",
-                tint = CardTintLavender,
-                iconColor = IconPurple,
+                tint = colors.cardTintLavender,
+                iconColor = colors.iconPurple,
                 onClick = onNavigateToProgress,
                 modifier = Modifier.weight(1f)
             )
@@ -401,16 +395,16 @@ private fun QuickActionsGrid(
             QuickActionCard(
                 icon = Icons.Default.Timer,
                 label = "Timer",
-                tint = CardTintPeach,
-                iconColor = IconOrange,
+                tint = colors.cardTintPeach,
+                iconColor = colors.iconOrange,
                 onClick = onNavigateToTimer,
                 modifier = Modifier.weight(1f)
             )
             QuickActionCard(
                 icon = Icons.Default.CalendarMonth,
                 label = "Calendar",
-                tint = CardTintSky,
-                iconColor = IconBlue,
+                tint = colors.cardTintSky,
+                iconColor = colors.iconBlue,
                 onClick = onNavigateToCalendar,
                 modifier = Modifier.weight(1f)
             )
@@ -432,7 +426,7 @@ private fun QuickActionCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceSoft
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -502,6 +496,7 @@ fun SessionCard(
     session: Session,
     onClick: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(session.date))
@@ -513,7 +508,7 @@ fun SessionCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceSoft
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -527,7 +522,7 @@ fun SessionCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardTintSky),
+                    .background(colors.cardTintSky),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

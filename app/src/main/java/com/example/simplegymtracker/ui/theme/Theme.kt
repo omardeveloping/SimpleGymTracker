@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -23,8 +24,8 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = CanvasWhite,
     secondary = Slate,
     onSecondary = CanvasWhite,
-    tertiary = CardTintMint,
-    onTertiary = InkDeep,
+    tertiary = CardTintMintDark,
+    onTertiary = CanvasWhite,
     background = Color(0xFF121212),
     onBackground = CanvasWhite,
     surface = Color(0xFF1E1E1E),
@@ -73,6 +74,40 @@ fun SimpleGymTrackerTheme(
         else -> LightColorScheme
     }
 
+    val gymColors = if (darkTheme) {
+        GymTrackerColors(
+            cardTintMint = CardTintMintDark,
+            cardTintSky = CardTintSkyDark,
+            cardTintLavender = CardTintLavenderDark,
+            cardTintPeach = CardTintPeachDark,
+            cardTintRose = CardTintRoseDark,
+            cardTintYellow = CardTintYellowDark,
+            cardTintCream = CardTintCreamDark,
+            cardTintGray = CardTintGrayDark,
+            restTimerBg = RestTimerBgDark,
+            iconGreen = IconGreenDark,
+            iconPurple = IconPurpleDark,
+            iconOrange = IconOrangeDark,
+            iconBlue = IconBlueDark
+        )
+    } else {
+        GymTrackerColors(
+            cardTintMint = CardTintMint,
+            cardTintSky = CardTintSky,
+            cardTintLavender = CardTintLavender,
+            cardTintPeach = CardTintPeach,
+            cardTintRose = CardTintRose,
+            cardTintYellow = CardTintYellow,
+            cardTintCream = CardTintCream,
+            cardTintGray = CardTintGray,
+            restTimerBg = RestTimerBg,
+            iconGreen = IconGreen,
+            iconPurple = IconPurple,
+            iconOrange = IconOrange,
+            iconBlue = IconBlue
+        )
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -82,9 +117,13 @@ fun SimpleGymTrackerTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalGymTrackerColors provides gymColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

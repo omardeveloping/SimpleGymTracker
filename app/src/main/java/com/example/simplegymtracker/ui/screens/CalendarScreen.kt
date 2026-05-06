@@ -52,8 +52,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
-import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.theme.SetPending
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
@@ -349,6 +349,7 @@ private fun DayCard(
     session: Session?,
     onSessionClick: (Long) -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val hasWorkout = session != null
@@ -361,7 +362,7 @@ private fun DayCard(
             },
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (hasWorkout) CardTintSky else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = if (hasWorkout) colors.cardTintSky else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
         Row(

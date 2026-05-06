@@ -42,8 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
-import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.LocalGymTrackerColors
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
@@ -139,6 +139,7 @@ fun HistorySessionCard(
     session: Session,
     onCopy: () -> Unit
 ) {
+    val colors = LocalGymTrackerColors.current
     val dateFormat = remember { SimpleDateFormat("EEEE, MMM dd, yyyy", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(session.date))
@@ -160,7 +161,7 @@ fun HistorySessionCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(CardTintSky),
+                        .background(colors.cardTintSky),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

@@ -26,7 +26,7 @@ val Hairline = Color(0xFFE5E3DF)
 val HairlineSoft = Color(0xFFEDE9E4)
 val HairlineStrong = Color(0xFFC8C4BE)
 
-// Card Tints
+// Card Tints - Light Mode (pastels)
 val CardTintMint = Color(0xFFD9F3E1)
 val CardTintSky = Color(0xFFDCECFA)
 val CardTintLavender = Color(0xFFE6E0F5)
@@ -36,6 +36,16 @@ val CardTintYellow = Color(0xFFFEF7D6)
 val CardTintCream = Color(0xFFF8F5E8)
 val CardTintGray = Color(0xFFF0EEEC)
 
+// Card Tints - Dark Mode (darker, more saturated for contrast)
+val CardTintMintDark = Color(0xFF1B3A2A)
+val CardTintSkyDark = Color(0xFF1A2D45)
+val CardTintLavenderDark = Color(0xFF2A2540)
+val CardTintPeachDark = Color(0xFF3D2B1F)
+val CardTintRoseDark = Color(0xFF3D1F2E)
+val CardTintYellowDark = Color(0xFF3D3A1F)
+val CardTintCreamDark = Color(0xFF2D2A24)
+val CardTintGrayDark = Color(0xFF2A2826)
+
 // Semantic
 val SuccessGreen = Color(0xFF1AAE39)
 val WarningOrange = Color(0xFFDD5B00)
@@ -44,12 +54,19 @@ val StreakGold = Color(0xFFFFB800)
 
 // Gym Specific
 val RestTimerBg = Color(0xFFF0F9FF)
+val RestTimerBgDark = Color(0xFF1A2A3A)
 val RestTimerAccent = Color(0xFF3B82F6)
 val SetComplete = Color(0xFF1AAE39)
 val SetPending = Color(0xFFBBB8B1)
 
-// Icon Colors
+// Icon Colors - Light Mode
 val IconGreen = Color(0xFF166534)
 val IconPurple = Color(0xFF5B21B6)
 val IconOrange = Color(0xFF9A3412)
 val IconBlue = Color(0xFF1E40AF)
+
+// Icon Colors - Dark Mode (lighter for contrast)
+val IconGreenDark = Color(0xFF4ADE80)
+val IconPurpleDark = Color(0xFFA78BFA)
+val IconOrangeDark = Color(0xFFFB923C)
+val IconBlueDark = Color(0xFF60A5FA)
