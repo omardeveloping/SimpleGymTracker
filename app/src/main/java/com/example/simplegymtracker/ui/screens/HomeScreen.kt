@@ -353,7 +353,7 @@ private fun HeroCard(
                                 text = "Start Workout",
                                 color = ElectricBlue,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
+                                style = MaterialTheme.typography.labelLarge
                             )
                         }
                     }
@@ -371,11 +371,11 @@ private fun QuickActionsGrid(
     onNavigateToCalendar: () -> Unit
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             QuickActionCard(
                 icon = Icons.Default.History,
@@ -396,7 +396,7 @@ private fun QuickActionsGrid(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             QuickActionCard(
                 icon = Icons.Default.Timer,
@@ -456,7 +456,7 @@ private fun QuickActionCard(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
@@ -502,8 +502,8 @@ fun SessionCard(
     session: Session,
     onClick: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(session.date))
     val timeString = timeFormat.format(Date(session.date))
 
@@ -511,7 +511,7 @@ fun SessionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = SurfaceSoft
         ),
@@ -537,12 +537,14 @@ fun SessionCard(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Workout Session",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -599,7 +601,7 @@ private fun StartWorkoutButton(onStartWorkout: () -> Unit) {
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.FitnessCenter,
@@ -610,7 +612,7 @@ private fun StartWorkoutButton(onStartWorkout: () -> Unit) {
                 Text(
                     text = "Start Workout",
                     color = Color.White,
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             }

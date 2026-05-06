@@ -155,9 +155,10 @@ fun ExerciseSelectorScreen(
                 EmptyExerciseState(searchQuery = searchQuery)
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(displayExercises) { _, exercise ->
+                    items(count = displayExercises.size, key = { index -> displayExercises[index].exerciseId }) { index ->
+                        val exercise = displayExercises[index]
                         ExerciseCard(
                             exercise = exercise,
                             onClick = { onExerciseSelected(exercise.exerciseId) }

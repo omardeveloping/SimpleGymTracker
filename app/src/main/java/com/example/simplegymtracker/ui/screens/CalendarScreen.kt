@@ -273,7 +273,7 @@ private fun MonthView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa").forEach { day ->
@@ -303,7 +303,7 @@ private fun MonthView(
             columns = GridCells.Fixed(7),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp)
         ) {
             items(cells) { dayNumber ->
                 if (dayNumber != null) {
@@ -349,8 +349,8 @@ private fun DayCard(
     session: Session?,
     onSessionClick: (Long) -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val hasWorkout = session != null
 
     Card(

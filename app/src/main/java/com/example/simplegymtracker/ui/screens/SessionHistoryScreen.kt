@@ -32,10 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,16 +62,6 @@ fun SessionHistoryScreen(
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
     val sessions by workoutViewModel.allSessions.collectAsState()
 
-    // Animate card entrances
-    val visibleIndices = remember { mutableStateListOf<Int>() }
-    LaunchedEffect(sessions.size) {
-        visibleIndices.clear()
-        sessions.indices.forEach { index ->
-            kotlinx.coroutines.delay(60L * index)
-            visibleIndices.add(index)
-        }
-    }
-
     Scaffold(
         topBar = {
             GymTrackerAppBar(
@@ -96,9 +84,10 @@ fun SessionHistoryScreen(
                 }
             }
 
-            itemsIndexed(sessions) { index, session ->
+            items(count = sessions.size, key = { index -> sessions[index].sessionId }) { index ->
+                val session = sessions[index]
                 AnimatedVisibility(
-                    visible = index in visibleIndices,
+                    visible = true,
                     enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 50 }
                 ) {
                     HistorySessionCard(
@@ -150,8 +139,8 @@ fun HistorySessionCard(
     session: Session,
     onCopy: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("EEEE, MMM dd, yyyy", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("EEEE, MMM dd, yyyy", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateString = dateFormat.format(Date(session.date))
     val timeString = timeFormat.format(Date(session.date))
 
@@ -185,7 +174,9 @@ fun HistorySessionCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = dateString,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         text = timeString,

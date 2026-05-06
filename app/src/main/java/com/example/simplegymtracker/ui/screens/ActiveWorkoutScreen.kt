@@ -113,9 +113,6 @@ fun ActiveWorkoutScreen(
     val exercises by exerciseViewModel.allExercises.collectAsState()
     var showFinishDialog by remember { mutableStateOf(false) }
 
-    val totalSets = logs.size
-    val completedSets = logs.count { /* will be computed from sets */ false }
-
     Scaffold(
         topBar = {
             GymTrackerAppBar(
@@ -174,7 +171,8 @@ fun ActiveWorkoutScreen(
                 }
             }
 
-            itemsIndexed(logs) { index, log ->
+            items(count = logs.size, key = { index -> logs[index].exerciseLogId }) { index ->
+                val log = logs[index]
                 val exercise = exercises.find { it.exerciseId == log.exerciseId }
                 ExerciseLogCard(
                     log = log,
@@ -276,7 +274,7 @@ fun ExerciseLogCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(CardTintMint),
                     contentAlignment = Alignment.Center
@@ -285,14 +283,16 @@ fun ExerciseLogCard(
                         imageVector = Icons.Default.FitnessCenter,
                         contentDescription = null,
                         tint = ElectricBlue,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = exercise?.name ?: "Unknown Exercise",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${sets.size} sets",
@@ -455,7 +455,7 @@ fun SetRowWithSwipe(
             if (isComplete) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(SetComplete.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
@@ -470,7 +470,7 @@ fun SetRowWithSwipe(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(ElectricBlue.copy(alpha = 0.12f))
                         .clickable {
@@ -562,9 +562,10 @@ fun AddSetForm(
             OutlinedTextField(
                 value = weightText,
                 onValueChange = {
-                    if (it.isEmpty() || it.toFloatOrNull() != null) {
+                    val value = it.toFloatOrNull()
+                    if (it.isEmpty() || (value != null && value >= 0f)) {
                         weightText = it
-                        weightInUnit = it.toFloatOrNull() ?: 0f
+                        weightInUnit = value ?: 0f
                     }
                 },
                 label = { Text(if (isCardio) "Distance" else "Weight") },
@@ -582,9 +583,10 @@ fun AddSetForm(
             OutlinedTextField(
                 value = repsText,
                 onValueChange = {
-                    if (it.isEmpty() || it.toIntOrNull() != null) {
+                    val value = it.toIntOrNull()
+                    if (it.isEmpty() || (value != null && value >= 0)) {
                         repsText = it
-                        reps = it.toIntOrNull() ?: 0
+                        reps = value ?: 0
                     }
                 },
                 label = { Text(if (isCardio) "Duration (min)" else "Reps") },
@@ -686,10 +688,8 @@ private fun FinishWorkoutDialog(
     onConfirm: () -> Unit
 ) {
     val logs by workoutViewModel.getLogsForSession(sessionId).collectAsState(initial = emptyList())
-
     var totalSets = 0
     var completedSets = 0
-    var totalExercises = logs.size
 
     for (log in logs) {
         val sets by workoutViewModel.getSetsForLog(log.exerciseLogId).collectAsState(initial = emptyList())
@@ -740,7 +740,7 @@ private fun FinishWorkoutDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    StatMini(label = "Exercises", value = totalExercises.toString())
+                    StatMini(label = "Exercises", value = logs.size.toString())
                     StatMini(label = "Sets", value = "$completedSets/$totalSets")
                     StatMini(label = "Completed", value = "$completionRate%")
                 }
