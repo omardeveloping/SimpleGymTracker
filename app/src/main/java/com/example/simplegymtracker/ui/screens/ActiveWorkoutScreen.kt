@@ -300,6 +300,7 @@ fun ExerciseLogCard(
                             set = set,
                             setNumber = index + 1,
                             exerciseCategory = exercise?.category,
+                            preferredUnit = preferredUnit,
                             onComplete = { workoutViewModel.completeSet(set.setId, true) },
                             onDelete = { workoutViewModel.deleteSet(set) }
                         )
@@ -360,6 +361,7 @@ fun SetRowWithSwipe(
     set: Set,
     setNumber: Int,
     exerciseCategory: String? = null,
+    preferredUnit: String = "kg",
     onComplete: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -415,7 +417,7 @@ fun SetRowWithSwipe(
                 )
             } else {
                 Text(
-                    text = "${set.weight}kg",
+                    text = "${set.weight}$preferredUnit",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.width(60.dp)
                 )

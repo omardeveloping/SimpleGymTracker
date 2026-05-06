@@ -18,9 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -171,20 +169,32 @@ private fun WeekView(
             }
         }
 
-        val calendar = Calendar.getInstance().apply { timeInMillis = currentWeekStart }
+        val weekStartCalendar = Calendar.getInstance().apply { timeInMillis = currentWeekStart }
         val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
         items(7) { dayIndex ->
-            calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY + dayIndex)
-            val dayStart = calendar.timeInMillis
-            val dayEnd = dayStart + 24 * 60 * 60 * 1000L - 1
+            val dayCalendar = Calendar.getInstance().apply {
+                timeInMillis = weekStartCalendar.timeInMillis
+                add(Calendar.DAY_OF_YEAR, dayIndex)
+            }
+            val dayStart = dayCalendar.timeInMillis
+            dayCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            dayCalendar.set(Calendar.MINUTE, 59)
+            dayCalendar.set(Calendar.SECOND, 59)
+            dayCalendar.set(Calendar.MILLISECOND, 999)
+            val dayEnd = dayCalendar.timeInMillis
+            dayCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            dayCalendar.set(Calendar.MINUTE, 0)
+            dayCalendar.set(Calendar.SECOND, 0)
+            dayCalendar.set(Calendar.MILLISECOND, 0)
+            val dayStartNormalized = dayCalendar.timeInMillis
 
-            val daySessions = sessions.filter { it.date in dayStart..dayEnd }
+            val daySessions = sessions.filter { it.date in dayStartNormalized..dayEnd }
 
             if (daySessions.isNotEmpty()) {
                 daySessions.forEach { session ->
                     DayCard(
-                        date = calendar.time,
+                        date = dayCalendar.time,
                         dayName = daysOfWeek[dayIndex],
                         session = session,
                         onSessionClick = onSessionClick
@@ -192,7 +202,7 @@ private fun WeekView(
                 }
             } else {
                 DayCard(
-                    date = calendar.time,
+                    date = dayCalendar.time,
                     dayName = daysOfWeek[dayIndex],
                     session = null,
                     onSessionClick = {}
@@ -385,11 +395,13 @@ private fun DayCard(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
-                    Text(
-                        text = timeFormat.format(Date(session!!.date)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    session?.let {
+                        Text(
+                            text = timeFormat.format(Date(it.date)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Icon(
                     imageVector = Icons.Default.FitnessCenter,

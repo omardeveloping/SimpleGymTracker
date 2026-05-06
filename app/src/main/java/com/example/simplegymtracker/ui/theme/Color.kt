@@ -40,12 +40,16 @@ val CardTintGray = Color(0xFFF0EEEC)
 val SuccessGreen = Color(0xFF1AAE39)
 val WarningOrange = Color(0xFFDD5B00)
 val ErrorRed = Color(0xFFE03131)
-val SemanticSuccess = Color(0xFF1AAE39)
-val SemanticWarning = Color(0xFFDD5B00)
-val SemanticError = Color(0xFFE03131)
+val StreakGold = Color(0xFFFFB800)
 
 // Gym Specific
 val RestTimerBg = Color(0xFFF0F9FF)
 val RestTimerAccent = Color(0xFF3B82F6)
 val SetComplete = Color(0xFF1AAE39)
 val SetPending = Color(0xFFBBB8B1)
+
+// Icon Colors
+val IconGreen = Color(0xFF166534)
+val IconPurple = Color(0xFF5B21B6)
+val IconOrange = Color(0xFF9A3412)
+val IconBlue = Color(0xFF1E40AF)

@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val users = userRepository.allUsers.first()
             if (users.isEmpty()) {
-                userRepository.insert(User(id = 0, name = "Default", lastName = "User", preferredUnit = "kg"))
+                userRepository.insert(User(id = 1, name = "Default", lastName = "User", preferredUnit = "kg"))
             }
         }
 
@@ -228,13 +228,17 @@ fun AppNavHost(
             exitTransition = { exitTransition },
             popEnterTransition = { popEnterTransition },
             popExitTransition = { popExitTransition }
-        ) {
+        ) { backStackEntry ->
+            val viewModel: com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = workoutViewModelFactory
+                )
             SessionHistoryScreen(
                 workoutViewModelFactory = workoutViewModelFactory,
                 exerciseViewModelFactory = exerciseViewModelFactory,
                 onCopySession = { sessionId ->
-                    workoutViewModelFactory.let { factory ->
-                        // Copy session logic is handled in the ViewModel
+                    viewModel.copySession(sessionId, userId = 1) { newSessionId ->
                     }
                 },
                 onNavigateBack = {

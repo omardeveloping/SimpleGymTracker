@@ -217,7 +217,11 @@ fun AnimatedLineChart(
 
         val points = data.map { (x, y) ->
             val px = padding + (x / maxX) * chartWidth
-            val py = padding + chartHeight - ((y - minY) / (maxY - minY)) * chartHeight
+            val py = if (maxY == minY) {
+                padding + chartHeight / 2
+            } else {
+                padding + chartHeight - ((y - minY) / (maxY - minY)) * chartHeight
+            }
             Offset(px, py)
         }
 

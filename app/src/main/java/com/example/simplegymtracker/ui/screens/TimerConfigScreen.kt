@@ -89,19 +89,18 @@ fun TimerConfigScreen(
         }
     }
 
-    LaunchedEffect(isTimerRunning, remainingTime, totalTime) {
-        if (isTimerRunning && remainingTime > 0) {
-            while (remainingTime > 0 && isTimerRunning) {
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            while (remainingTime > 0) {
                 delay(1000L)
-                if (isTimerRunning) {
-                    remainingTime -= 1
-                    currentProgress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
-                    if (remainingTime <= 5 && remainingTime > 0) {
-                        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
-                    }
+                if (!isTimerRunning) break
+                remainingTime -= 1
+                currentProgress = if (totalTime > 0) remainingTime.toFloat() / totalTime else 0f
+                if (remainingTime <= 5 && remainingTime > 0) {
+                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
                 }
             }
-            if (remainingTime <= 0) {
+            if (remainingTime <= 0 && isTimerRunning) {
                 isTimerRunning = false
                 toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
             }

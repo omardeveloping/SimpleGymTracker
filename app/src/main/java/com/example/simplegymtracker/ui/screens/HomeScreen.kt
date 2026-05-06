@@ -61,7 +61,12 @@ import com.example.simplegymtracker.ui.theme.CardTintPeach
 import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.ElectricBlueDeep
+import com.example.simplegymtracker.ui.theme.StreakGold
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
+import com.example.simplegymtracker.ui.theme.IconGreen
+import com.example.simplegymtracker.ui.theme.IconPurple
+import com.example.simplegymtracker.ui.theme.IconOrange
+import com.example.simplegymtracker.ui.theme.IconBlue
 import com.example.simplegymtracker.ui.viewmodel.UserViewModel
 import com.example.simplegymtracker.ui.viewmodel.UserViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
@@ -312,7 +317,7 @@ private fun HeroCard(
                                 modifier = Modifier.size(16.dp)
                             ) {
                                 drawCircle(
-                                    color = Color(0xFFFFB800),
+                                    color = StreakGold,
                                     radius = size.minDimension / 2
                                 )
                             }
@@ -376,7 +381,7 @@ private fun QuickActionsGrid(
                 icon = Icons.Default.History,
                 label = "History",
                 tint = CardTintMint,
-                iconColor = Color(0xFF166534),
+                iconColor = IconGreen,
                 onClick = onNavigateToHistory,
                 modifier = Modifier.weight(1f)
             )
@@ -384,7 +389,7 @@ private fun QuickActionsGrid(
                 icon = Icons.AutoMirrored.Filled.ShowChart,
                 label = "Progress",
                 tint = CardTintLavender,
-                iconColor = Color(0xFF5B21B6),
+                iconColor = IconPurple,
                 onClick = onNavigateToProgress,
                 modifier = Modifier.weight(1f)
             )
@@ -397,7 +402,7 @@ private fun QuickActionsGrid(
                 icon = Icons.Default.Timer,
                 label = "Timer",
                 tint = CardTintPeach,
-                iconColor = Color(0xFF9A3412),
+                iconColor = IconOrange,
                 onClick = onNavigateToTimer,
                 modifier = Modifier.weight(1f)
             )
@@ -405,7 +410,7 @@ private fun QuickActionsGrid(
                 icon = Icons.Default.CalendarMonth,
                 label = "Calendar",
                 tint = CardTintSky,
-                iconColor = Color(0xFF1E40AF),
+                iconColor = IconBlue,
                 onClick = onNavigateToCalendar,
                 modifier = Modifier.weight(1f)
             )
@@ -470,11 +475,25 @@ private fun EmptySessionsState() {
             .padding(vertical = 32.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "No workouts yet. Start your first!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No workouts yet",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Start your first session!",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

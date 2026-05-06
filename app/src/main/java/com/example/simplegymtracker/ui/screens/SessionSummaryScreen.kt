@@ -59,6 +59,8 @@ import com.example.simplegymtracker.ui.theme.CardTintMint
 import com.example.simplegymtracker.ui.theme.CardTintPeach
 import com.example.simplegymtracker.ui.theme.CardTintSky
 import com.example.simplegymtracker.ui.theme.ElectricBlue
+import com.example.simplegymtracker.ui.theme.Hairline
+import com.example.simplegymtracker.ui.theme.StreakGold
 import com.example.simplegymtracker.ui.theme.SurfaceSoft
 import com.example.simplegymtracker.ui.viewmodel.MonthlyStats
 import com.example.simplegymtracker.ui.viewmodel.SessionStats
@@ -77,11 +79,16 @@ fun SessionSummaryScreen(
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
 
     var sessionStats by remember { mutableStateOf<SessionStats?>(null) }
-    val weeklyStats by workoutViewModel.getWeeklyStats().collectAsState()
-    val monthlyStats by workoutViewModel.getMonthlyStats().collectAsState()
+    val weeklyStats by workoutViewModel.weeklyStats.collectAsState()
+    val monthlyStats by workoutViewModel.monthlyStats.collectAsState()
     val sessions by workoutViewModel.allSessions.collectAsState()
 
-    var sessionDuration by remember { mutableStateOf("") }
+    var sessionDuration by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(sessionId) {
+        workoutViewModel.loadWeeklyStats()
+        workoutViewModel.loadMonthlyStats()
+    }
 
     LaunchedEffect(sessionId) {
         workoutViewModel.getSessionStats(sessionId.toInt()) { stats ->
@@ -89,8 +96,7 @@ fun SessionSummaryScreen(
         }
     }
 
-    LaunchedEffect(sessionId) {
-        val sessions = workoutViewModel.allSessions.value
+    LaunchedEffect(sessions) {
         val session = sessions.find { it.sessionId.toLong() == sessionId }
         session?.let {
             val now = System.currentTimeMillis()
@@ -127,7 +133,7 @@ fun SessionSummaryScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Session completed in $sessionDuration",
+                text = sessionDuration?.let { "Session completed in $it" } ?: "Session completed",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -172,7 +178,7 @@ fun SessionSummaryScreen(
                     SummaryStatCard(
                         icon = Icons.Default.Speed,
                         label = "Volume",
-                        value = "${(stats.totalVolume / 1000).toInt()}k kg",
+                        value = formatVolume(stats.totalVolume),
                         tint = CardTintLavender,
                         modifier = Modifier.weight(1f)
                     )
@@ -375,7 +381,7 @@ private fun CompletionRing(progress: Float) {
         val center = Offset(size.width / 2, size.height / 2)
 
         drawCircle(
-            color = Color(0xFFE5E3DF),
+            color = Hairline,
             radius = radius,
             style = Stroke(width = strokeWidth)
         )
@@ -387,6 +393,16 @@ private fun CompletionRing(progress: Float) {
             useCenter = false,
             style = Stroke(width = strokeWidth)
         )
+    }
+}
+
+private fun formatVolume(volume: Float): String {
+    return if (volume >= 10000) {
+        "${(volume / 1000).toInt()}k kg"
+    } else if (volume >= 1000) {
+        "${(volume / 1000).toInt()}k kg"
+    } else {
+        "${volume.toInt()} kg"
     }
 }
 
@@ -407,7 +423,7 @@ private fun WeeklySummaryCard(stats: WeeklyStats) {
                 WeeklyStatItem(label = "Sets", value = stats.totalSets.toString())
                 WeeklyStatItem(
                     label = "Volume",
-                    value = if (stats.totalVolume > 1000) "${(stats.totalVolume / 1000).toInt()}k kg" else "${stats.totalVolume.toInt()} kg"
+                    value = formatVolume(stats.totalVolume)
                 )
             }
         }
@@ -447,7 +463,7 @@ private fun MonthlySummaryCard(stats: MonthlyStats) {
                 WeeklyStatItem(label = "Sets", value = stats.totalSets.toString())
                 WeeklyStatItem(
                     label = "Volume",
-                    value = if (stats.totalVolume > 1000) "${(stats.totalVolume / 1000).toInt()}k kg" else "${stats.totalVolume.toInt()} kg"
+                    value = formatVolume(stats.totalVolume)
                 )
             }
 
@@ -461,7 +477,7 @@ private fun MonthlySummaryCard(stats: MonthlyStats) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = Color(0xFFFFB800),
+                        tint = StreakGold,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))

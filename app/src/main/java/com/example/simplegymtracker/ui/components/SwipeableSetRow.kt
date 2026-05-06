@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.example.simplegymtracker.ui.theme.SemanticError
-import com.example.simplegymtracker.ui.theme.SemanticSuccess
+import com.example.simplegymtracker.ui.theme.ErrorRed
+import com.example.simplegymtracker.ui.theme.SuccessGreen
 import kotlin.math.roundToInt
 
 private const val SWIPE_THRESHOLD = 0.3f
@@ -59,12 +59,12 @@ fun SwipeableSetRow(
     )
 
     val completeColor by animateColorAsState(
-        targetValue = if (offsetX > 0) SemanticSuccess else Color.Transparent,
+        targetValue = if (offsetX > 0) SuccessGreen else Color.Transparent,
         label = "completeColor"
     )
 
     val deleteColor by animateColorAsState(
-        targetValue = if (offsetX < 0) SemanticError else Color.Transparent,
+        targetValue = if (offsetX < 0) ErrorRed else Color.Transparent,
         label = "deleteColor"
     )
 
