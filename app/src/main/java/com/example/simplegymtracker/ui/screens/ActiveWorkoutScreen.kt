@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -247,6 +248,7 @@ fun ExerciseLogCard(
     var showAddSet by remember { mutableStateOf(false) }
     var lastSetWeight by remember { mutableFloatStateOf(0f) }
     var lastSetReps by remember { mutableIntStateOf(8) }
+    var editingSet by remember { mutableStateOf<Set?>(null) }
 
     LaunchedEffect(exercise?.exerciseId) {
         if (exercise?.exerciseId != null) {
@@ -326,7 +328,8 @@ fun ExerciseLogCard(
                             exerciseCategory = exercise?.category,
                             preferredUnit = preferredUnit,
                             onComplete = { workoutViewModel.completeSet(set.setId, true) },
-                            onDelete = { workoutViewModel.deleteSet(set) }
+                            onDelete = { workoutViewModel.deleteSet(set) },
+                            onEdit = { editingSet = set }
                         )
                         if (index < sets.size - 1) {
                             Spacer(modifier = Modifier.height(4.dp))
@@ -360,7 +363,7 @@ fun ExerciseLogCard(
                     }
 
                     AnimatedVisibility(
-                        visible = !showAddSet,
+                        visible = !showAddSet && editingSet == null,
                         enter = fadeIn(tween(200)),
                         exit = fadeOut(tween(150))
                     ) {
@@ -372,6 +375,25 @@ fun ExerciseLogCard(
                             modifier = Modifier
                                 .clickable { showAddSet = true }
                                 .padding(8.dp)
+                        )
+                    }
+
+                    editingSet?.let { setToEdit ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        EditSetForm(
+                            set = setToEdit,
+                            exerciseCategory = exercise?.category,
+                            preferredUnit = preferredUnit,
+                            onSave = { weight, reps, type ->
+                                val updatedSet = setToEdit.copy(
+                                    weight = weight,
+                                    repetitions = reps,
+                                    type = type
+                                )
+                                workoutViewModel.updateSet(updatedSet)
+                                editingSet = null
+                            },
+                            onCancel = { editingSet = null }
                         )
                     }
                 }
@@ -387,7 +409,8 @@ fun SetRowWithSwipe(
     exerciseCategory: String? = null,
     preferredUnit: String = "kg",
     onComplete: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val view = LocalView.current
     var isComplete by remember { mutableStateOf(set.isCompleted) }
@@ -453,6 +476,18 @@ fun SetRowWithSwipe(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.width(80.dp)
             )
+
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
 
             if (isComplete) {
                 Box(
@@ -656,6 +691,172 @@ fun AddSetForm(
                             if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
                         }
                         onAdd(weightInKg, reps, type)
+                    }
+                    .padding(8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun EditSetForm(
+    set: Set,
+    exerciseCategory: String? = null,
+    preferredUnit: String = "kg",
+    onSave: (Float, Int, String) -> Unit,
+    onCancel: () -> Unit
+) {
+    val colors = LocalGymTrackerColors.current
+    val isCardio = exerciseCategory == "Cardio"
+    val unitType = if (isCardio) "distance" else "weight"
+    val initialWeightInUnit = if (!isCardio) {
+        if (preferredUnit == "lb") set.weight / 0.453592f else set.weight
+    } else {
+        if (preferredUnit == "mi") set.weight / 1.60934f else set.weight
+    }
+    var weightInUnit by remember { mutableFloatStateOf(initialWeightInUnit) }
+    var reps by remember { mutableIntStateOf(set.repetitions) }
+    var type by remember { mutableStateOf(set.type) }
+    var selectedUnit by remember { mutableStateOf(if (isCardio) "km" else preferredUnit) }
+
+    var weightText by remember { mutableStateOf("%.1f".format(weightInUnit).trimEnd('0').trimEnd('.')) }
+    var repsText by remember { mutableStateOf(reps.toString()) }
+
+    fun onUnitChange(newUnit: String) {
+        if (newUnit == selectedUnit) return
+        if (isCardio) {
+            val currentKm = if (selectedUnit == "mi") weightInUnit * 1.60934f else weightInUnit
+            val converted = if (newUnit == "mi") currentKm / 1.60934f else currentKm
+            val rounded = "%.1f".format(converted).toFloat()
+            weightInUnit = rounded
+            weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
+        } else {
+            val currentKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+            val converted = if (newUnit == "lb") currentKg / 0.453592f else currentKg
+            val rounded = "%.1f".format(converted).toFloat()
+            weightInUnit = rounded
+            weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
+        }
+        selectedUnit = newUnit
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.restTimerBg, RoundedCornerShape(12.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            UnitToggle(
+                selectedUnit = selectedUnit,
+                onUnitChange = { onUnitChange(it) },
+                unitType = unitType
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = weightText,
+                onValueChange = {
+                    val value = it.toFloatOrNull()
+                    if (it.isEmpty() || (value != null && value >= 0f)) {
+                        weightText = it
+                        weightInUnit = value ?: 0f
+                    }
+                },
+                label = { Text(if (isCardio) "Distance" else "Weight") },
+                trailingIcon = { Text(selectedUnit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ElectricBlue,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            OutlinedTextField(
+                value = repsText,
+                onValueChange = {
+                    val value = it.toIntOrNull()
+                    if (it.isEmpty() || (value != null && value >= 0)) {
+                        repsText = it
+                        reps = value ?: 0
+                    }
+                },
+                label = { Text(if (isCardio) "Duration (min)" else "Reps") },
+                trailingIcon = { Text(if (isCardio) "min" else "reps", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ElectricBlue,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SetTypeChip(
+                label = "Warm-up",
+                selected = type == "Warm-up",
+                onClick = { type = "Warm-up" }
+            )
+            SetTypeChip(
+                label = "Working Set",
+                selected = type == "Working Set",
+                onClick = { type = "Working Set" }
+            )
+            SetTypeChip(
+                label = "Drop Set",
+                selected = type == "Drop Set",
+                onClick = { type = "Drop Set" }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = "Cancel",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .clickable { onCancel() }
+                    .padding(8.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Save",
+                color = ElectricBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clickable {
+                        val weightInKg = if (isCardio) {
+                            if (selectedUnit == "mi") weightInUnit * 1.60934f else weightInUnit
+                        } else {
+                            if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+                        }
+                        onSave(weightInKg, reps, type)
                     }
                     .padding(8.dp)
             )
