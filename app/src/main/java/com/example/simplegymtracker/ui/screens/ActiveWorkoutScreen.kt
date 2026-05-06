@@ -285,6 +285,7 @@ fun ExerciseLogCard(
                         SetRowWithSwipe(
                             set = set,
                             setNumber = index + 1,
+                            exerciseCategory = exercise?.category,
                             onComplete = { workoutViewModel.completeSet(set.setId, true) },
                             onDelete = { workoutViewModel.deleteSet(set) }
                         )
@@ -301,6 +302,7 @@ fun ExerciseLogCard(
                         AddSetForm(
                             initialWeight = lastSetWeight,
                             initialReps = lastSetReps,
+                            exerciseCategory = exercise?.category,
                             preferredUnit = preferredUnit,
                             onAdd = { weight, reps, type ->
                                 workoutViewModel.addSetToLog(
@@ -343,12 +345,14 @@ fun ExerciseLogCard(
 fun SetRowWithSwipe(
     set: Set,
     setNumber: Int,
+    exerciseCategory: String? = null,
     onComplete: () -> Unit,
     onDelete: () -> Unit
 ) {
     val view = LocalView.current
     var isComplete by remember { mutableStateOf(set.isCompleted) }
     val statusColor = if (isComplete) SetComplete else SetPending
+    val isCardio = exerciseCategory == "Cardio"
 
     val scale by animateFloatAsState(
         targetValue = if (isComplete) 1.2f else 1f,
@@ -384,16 +388,29 @@ fun SetRowWithSwipe(
                 modifier = Modifier.width(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "${set.weight}kg",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.width(60.dp)
-            )
-            Text(
-                text = "${set.repetitions} reps",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
+            if (isCardio) {
+                Text(
+                    text = "${set.weight}km",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.width(60.dp)
+                )
+                Text(
+                    text = "${set.repetitions}min",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                Text(
+                    text = "${set.weight}kg",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.width(60.dp)
+                )
+                Text(
+                    text = "${set.repetitions} reps",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+            }
             Text(
                 text = set.type,
                 style = MaterialTheme.typography.labelMedium,
@@ -428,27 +445,43 @@ fun SetRowWithSwipe(
 fun AddSetForm(
     initialWeight: Float = 0f,
     initialReps: Int = 8,
+    exerciseCategory: String? = null,
     preferredUnit: String = "kg",
     onAdd: (Float, Int, String) -> Unit,
     onCancel: () -> Unit
 ) {
-    val initialWeightInUnit = if (preferredUnit == "lb") initialWeight / 0.453592f else initialWeight
+    val isCardio = exerciseCategory == "Cardio"
+    val unitType = if (isCardio) "distance" else "weight"
+    val defaultDistance = if (preferredUnit == "mi") 1.0f else 1.6f
+    val initialWeightInUnit = if (!isCardio) {
+        if (preferredUnit == "lb") initialWeight / 0.453592f else initialWeight
+    } else {
+        if (preferredUnit == "mi") initialWeight / 1.60934f else initialWeight
+    }
     val roundedInitial = "%.1f".format(initialWeightInUnit).toFloat()
-    var weightInUnit by remember { mutableFloatStateOf(if (roundedInitial > 0) roundedInitial else 20f) }
+    var weightInUnit by remember { mutableFloatStateOf(if (roundedInitial > 0) roundedInitial else if (isCardio) defaultDistance else 20f) }
     var reps by remember { mutableIntStateOf(if (initialReps > 0) initialReps else 8) }
     var type by remember { mutableStateOf("Working Set") }
-    var selectedUnit by remember { mutableStateOf(preferredUnit) }
+    var selectedUnit by remember { mutableStateOf(if (isCardio) "km" else preferredUnit) }
 
     var weightText by remember { mutableStateOf("%.1f".format(weightInUnit).trimEnd('0').trimEnd('.')) }
     var repsText by remember { mutableStateOf(reps.toString()) }
 
     fun onUnitChange(newUnit: String) {
         if (newUnit == selectedUnit) return
-        val currentKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
-        val converted = if (newUnit == "lb") currentKg / 0.453592f else currentKg
-        val rounded = "%.1f".format(converted).toFloat()
-        weightInUnit = rounded
-        weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
+        if (isCardio) {
+            val currentKm = if (selectedUnit == "mi") weightInUnit * 1.60934f else weightInUnit
+            val converted = if (newUnit == "mi") currentKm / 1.60934f else currentKm
+            val rounded = "%.1f".format(converted).toFloat()
+            weightInUnit = rounded
+            weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
+        } else {
+            val currentKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+            val converted = if (newUnit == "lb") currentKg / 0.453592f else currentKg
+            val rounded = "%.1f".format(converted).toFloat()
+            weightInUnit = rounded
+            weightText = "%.1f".format(rounded).trimEnd('0').trimEnd('.')
+        }
         selectedUnit = newUnit
     }
 
@@ -464,7 +497,8 @@ fun AddSetForm(
         ) {
             UnitToggle(
                 selectedUnit = selectedUnit,
-                onUnitChange = { onUnitChange(it) }
+                onUnitChange = { onUnitChange(it) },
+                unitType = unitType
             )
         }
 
@@ -482,7 +516,7 @@ fun AddSetForm(
                         weightInUnit = it.toFloatOrNull() ?: 0f
                     }
                 },
-                label = { Text("Weight") },
+                label = { Text(if (isCardio) "Distance" else "Weight") },
                 trailingIcon = { Text(selectedUnit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -502,8 +536,8 @@ fun AddSetForm(
                         reps = it.toIntOrNull() ?: 0
                     }
                 },
-                label = { Text("Reps") },
-                trailingIcon = { Text("reps", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
+                label = { Text(if (isCardio) "Duration (min)" else "Reps") },
+                trailingIcon = { Text(if (isCardio) "min" else "reps", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -560,7 +594,11 @@ fun AddSetForm(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .clickable {
-                        val weightInKg = if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+                        val weightInKg = if (isCardio) {
+                            if (selectedUnit == "mi") weightInUnit * 1.60934f else weightInUnit
+                        } else {
+                            if (selectedUnit == "lb") weightInUnit * 0.453592f else weightInUnit
+                        }
                         onAdd(weightInKg, reps, type)
                     }
                     .padding(8.dp)

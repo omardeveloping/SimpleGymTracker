@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -47,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.ui.components.GymTrackerAppBar
@@ -173,12 +176,23 @@ private fun WeekView(
 
             val daySessions = sessions.filter { it.date in dayStart..dayEnd }
 
-            DayCard(
-                date = calendar.time,
-                dayName = daysOfWeek[dayIndex],
-                sessions = daySessions,
-                onSessionClick = onSessionClick
-            )
+            if (daySessions.isNotEmpty()) {
+                daySessions.forEach { session ->
+                    DayCard(
+                        date = calendar.time,
+                        dayName = daysOfWeek[dayIndex],
+                        session = session,
+                        onSessionClick = onSessionClick
+                    )
+                }
+            } else {
+                DayCard(
+                    date = calendar.time,
+                    dayName = daysOfWeek[dayIndex],
+                    session = null,
+                    onSessionClick = {}
+                )
+            }
         }
     }
 }
@@ -281,15 +295,17 @@ private fun MonthView(
                     val dayStart = dayCalendar.timeInMillis
                     val dayEnd = dayStart + 24 * 60 * 60 * 1000L - 1
 
-                    val hasSession = sessions.any { it.date in dayStart..dayEnd }
+                    val daySessions = sessions.filter { it.date in dayStart..dayEnd }
+                    val sessionCount = daySessions.size
 
                     MonthDayCell(
                         day = dayNumber,
-                        hasSession = hasSession,
+                        sessionCount = sessionCount,
                         isToday = isToday(currentYear, currentMonth - 1, dayNumber),
                         onClick = {
-                            val session = sessions.find { it.date in dayStart..dayEnd }
-                            session?.let { onSessionClick(it.sessionId.toLong()) }
+                            if (sessionCount > 0) {
+                                daySessions.firstOrNull()?.let { onSessionClick(it.sessionId.toLong()) }
+                            }
                         }
                     )
                 } else {
@@ -311,17 +327,18 @@ private fun isToday(year: Int, month: Int, day: Int): Boolean {
 private fun DayCard(
     date: Date,
     dayName: String,
-    sessions: List<Session>,
+    session: Session?,
     onSessionClick: (Long) -> Unit
 ) {
     val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
-    val hasWorkout = sessions.isNotEmpty()
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val hasWorkout = session != null
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = hasWorkout) {
-                sessions.firstOrNull()?.let { onSessionClick(it.sessionId.toLong()) }
+                session?.let { onSessionClick(it.sessionId.toLong()) }
             },
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
@@ -360,7 +377,7 @@ private fun DayCard(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "${sessions.size} session(s)",
+                        text = timeFormat.format(Date(session!!.date)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -386,10 +403,11 @@ private fun DayCard(
 @Composable
 private fun MonthDayCell(
     day: Int,
-    hasSession: Boolean,
+    sessionCount: Int,
     isToday: Boolean,
     onClick: () -> Unit
 ) {
+    val hasSession = sessionCount > 0
     val backgroundColor = when {
         isToday -> ElectricBlue
         hasSession -> ElectricBlue.copy(alpha = 0.15f)
@@ -410,12 +428,22 @@ private fun MonthDayCell(
             .clickable(enabled = hasSession, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = day.toString(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = textColor,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+            )
+            if (hasSession) {
+                Text(
+                    text = if (sessionCount > 1) "$sessionCount" else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = textColor.copy(alpha = 0.7f),
+                    fontSize = 10.sp
+                )
+            }
+        }
     }
 }
 

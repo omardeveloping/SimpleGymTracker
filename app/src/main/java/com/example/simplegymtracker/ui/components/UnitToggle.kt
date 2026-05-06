@@ -19,7 +19,8 @@ import com.example.simplegymtracker.ui.theme.ElectricBlue
 fun UnitToggle(
     selectedUnit: String,
     onUnitChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    unitType: String = "weight"
 ) {
     Row(
         modifier = modifier
@@ -28,7 +29,10 @@ fun UnitToggle(
             .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        val units = listOf("kg", "lb")
+        val units = when (unitType) {
+            "distance" -> listOf("km", "mi")
+            else -> listOf("kg", "lb")
+        }
         units.forEach { unit ->
             val isSelected = selectedUnit == unit
             Text(
