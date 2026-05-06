@@ -31,10 +31,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,6 +81,7 @@ import com.example.simplegymtracker.ui.theme.ElectricBlue
 import com.example.simplegymtracker.ui.theme.RestTimerBg
 import com.example.simplegymtracker.ui.theme.SetComplete
 import com.example.simplegymtracker.ui.theme.SetPending
+import com.example.simplegymtracker.ui.theme.WarningOrange
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
@@ -105,6 +111,10 @@ fun ActiveWorkoutScreen(
 
     val logs by workoutViewModel.getLogsForSession(sessionId.toInt()).collectAsState(initial = emptyList())
     val exercises by exerciseViewModel.allExercises.collectAsState()
+    var showFinishDialog by remember { mutableStateOf(false) }
+
+    val totalSets = logs.size
+    val completedSets = logs.count { /* will be computed from sets */ false }
 
     Scaffold(
         topBar = {
@@ -119,9 +129,9 @@ fun ActiveWorkoutScreen(
                             tint = ElectricBlue
                         )
                     }
-                    IconButton(onClick = onFinishWorkout) {
+                    IconButton(onClick = { showFinishDialog = true }) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = Icons.Default.Check,
                             contentDescription = "Finish Workout",
                             tint = SetComplete
                         )
@@ -179,6 +189,18 @@ fun ActiveWorkoutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showFinishDialog) {
+        FinishWorkoutDialog(
+            sessionId = sessionId.toInt(),
+            workoutViewModel = workoutViewModel,
+            onDismiss = { showFinishDialog = false },
+            onConfirm = {
+                showFinishDialog = false
+                onFinishWorkout()
+            }
+        )
     }
 }
 
@@ -367,41 +389,37 @@ fun SetRowWithSwipe(
 ) {
     val view = LocalView.current
     var isComplete by remember { mutableStateOf(set.isCompleted) }
-    val statusColor = if (isComplete) SetComplete else SetPending
     val isCardio = exerciseCategory == "Cardio"
-
-    val scale by animateFloatAsState(
-        targetValue = if (isComplete) 1.2f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label = "checkScale"
-    )
 
     SwipeableSetRow(
         onSwipeComplete = {
-            isComplete = true
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            onComplete()
+            if (!isComplete) {
+                isComplete = true
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                onComplete()
+            }
         },
         onSwipeDelete = {
             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             onDelete()
         }
-    ) { _, triggerAnim ->
+    ) { _, _ ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    if (isComplete) SetComplete.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     RoundedCornerShape(8.dp)
                 )
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$setNumber",
                 style = MaterialTheme.typography.labelLarge,
-                color = ElectricBlue,
-                modifier = Modifier.width(24.dp)
+                color = if (isComplete) SetComplete else ElectricBlue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(28.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             if (isCardio) {
@@ -433,25 +451,42 @@ fun SetRowWithSwipe(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.width(80.dp)
             )
-            IconButton(
-                onClick = {
-                    if (!isComplete) {
-                        isComplete = true
-                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                        triggerAnim()
-                        onComplete()
-                    }
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Complete",
-                    tint = statusColor,
+
+            if (isComplete) {
+                Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .scale(scale)
-                )
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SetComplete.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Completed",
+                        tint = SetComplete,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ElectricBlue.copy(alpha = 0.12f))
+                        .clickable {
+                            isComplete = true
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            onComplete()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = "Tap to complete",
+                        tint = ElectricBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -641,4 +676,106 @@ fun SetTypeChip(
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 8.dp)
     )
+}
+
+@Composable
+private fun FinishWorkoutDialog(
+    sessionId: Int,
+    workoutViewModel: WorkoutViewModel,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val logs by workoutViewModel.getLogsForSession(sessionId).collectAsState(initial = emptyList())
+
+    var totalSets = 0
+    var completedSets = 0
+    var totalExercises = logs.size
+
+    for (log in logs) {
+        val sets by workoutViewModel.getSetsForLog(log.exerciseLogId).collectAsState(initial = emptyList())
+        totalSets += sets.size
+        completedSets += sets.count { it.isCompleted }
+    }
+
+    val completionRate = if (totalSets > 0) (completedSets * 100 / totalSets) else 0
+    val hasNoSets = totalSets == 0
+    val lowCompletion = completionRate < 50
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (hasNoSets) "No sets recorded" else "Finish Workout?",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column {
+                if (hasNoSets) {
+                    Text(
+                        text = "You haven't completed any sets yet. Are you sure you want to finish this workout?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else if (lowCompletion) {
+                    Text(
+                        text = "You've only completed $completionRate% of your sets.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarningOrange
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Are you sure you want to finish?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Text(
+                        text = "Great workout! You completed $completionRate% of your sets.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatMini(label = "Exercises", value = totalExercises.toString())
+                    StatMini(label = "Sets", value = "$completedSets/$totalSets")
+                    StatMini(label = "Completed", value = "$completionRate%")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (hasNoSets || lowCompletion) WarningOrange else SetComplete
+                )
+            ) {
+                Text(if (hasNoSets) "Finish Anyway" else "Finish Workout")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Continue Workout")
+            }
+        }
+    )
+}
+
+@Composable
+private fun StatMini(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
