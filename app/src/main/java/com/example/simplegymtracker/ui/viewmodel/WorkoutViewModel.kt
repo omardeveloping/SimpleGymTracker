@@ -248,23 +248,25 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             val startOfWeek = calendar.timeInMillis
 
             repository.getSessionsBetweenDates(startOfWeek, endOfWeek).collect { sessions ->
-                var totalSessions = sessions.size
+                if (sessions.isEmpty()) {
+                    _weeklyStats.value = WeeklyStats()
+                    return@collect
+                }
+
+                val sessionIds = sessions.map { it.sessionId }
+                val allLogs = repository.getLogsForSessions(sessionIds)
+                val logIds = allLogs.map { it.exerciseLogId }
+                val allSets = repository.getSetsForLogs(logIds)
+
                 var totalSets = 0
                 var totalVolume = 0f
-
-                for (session in sessions) {
-                    val logs = repository.getLogsForSession(session.sessionId).first()
-                    for (log in logs) {
-                        val sets = repository.getSetsForLog(log.exerciseLogId).first()
-                        totalSets += sets.size
-                        for (set in sets) {
-                            totalVolume += set.weight * set.repetitions
-                        }
-                    }
+                for (set in allSets) {
+                    totalSets++
+                    totalVolume += set.weight * set.repetitions
                 }
 
                 _weeklyStats.value = WeeklyStats(
-                    totalSessions = totalSessions,
+                    totalSessions = sessions.size,
                     totalSets = totalSets,
                     totalVolume = totalVolume
                 )
@@ -285,30 +287,38 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             val startOfMonth = calendar.timeInMillis
 
             repository.getSessionsBetweenDates(startOfMonth, endOfMonth).collect { sessions ->
-                var totalSessions = sessions.size
+                if (sessions.isEmpty()) {
+                    _monthlyStats.value = MonthlyStats()
+                    return@collect
+                }
+
+                val sessionIds = sessions.map { it.sessionId }
+                val allLogs = repository.getLogsForSessions(sessionIds)
+                val logIds = allLogs.map { it.exerciseLogId }
+                val allSets = repository.getSetsForLogs(logIds)
+
                 var totalSets = 0
                 var totalVolume = 0f
                 val exerciseCounts = mutableMapOf<String, Int>()
 
-                for (session in sessions) {
-                    val logs = repository.getLogsForSession(session.sessionId).first()
-                    for (log in logs) {
-                        val sets = repository.getSetsForLog(log.exerciseLogId).first()
-                        totalSets += sets.size
-                        for (set in sets) {
-                            totalVolume += set.weight * set.repetitions
-                        }
-                        val exercise = repository.getExerciseById(log.exerciseId)
-                        exercise?.let {
-                            exerciseCounts[it.name ?: "Unknown"] = exerciseCounts.getOrDefault(it.name ?: "Unknown", 0) + 1
-                        }
+                for (set in allSets) {
+                    totalSets++
+                    totalVolume += set.weight * set.repetitions
+                }
+
+                val exerciseIds = allLogs.map { it.exerciseId }.distinct()
+                for (exerciseId in exerciseIds) {
+                    val exercise = repository.getExerciseById(exerciseId)
+                    exercise?.let {
+                        val count = allLogs.count { it.exerciseId == exerciseId }
+                        exerciseCounts[it.name ?: "Unknown"] = count
                     }
                 }
 
                 val topExercise = exerciseCounts.maxByOrNull { it.value }
 
                 _monthlyStats.value = MonthlyStats(
-                    totalSessions = totalSessions,
+                    totalSessions = sessions.size,
                     totalSets = totalSets,
                     totalVolume = totalVolume,
                     topExercise = topExercise?.key,

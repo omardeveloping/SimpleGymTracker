@@ -9,6 +9,9 @@ interface SetDao {
     @Query("SELECT * FROM sets WHERE exerciseLogId = :exerciseLogId")
     fun getSetsForLog(exerciseLogId: Int): Flow<List<Set>>
 
+    @Query("SELECT * FROM sets WHERE exerciseLogId IN (:logIds)")
+    suspend fun getSetsForLogs(logIds: List<Int>): List<Set>
+
     @Query("""
         SELECT sets.* FROM sets
         INNER JOIN ExerciseLog ON sets.exerciseLogId = ExerciseLog.exerciseLogId

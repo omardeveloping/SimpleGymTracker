@@ -9,6 +9,9 @@ interface ExerciseLogDao {
     @Query("SELECT * FROM ExerciseLog WHERE sessionId = :sessionId")
     fun getLogsForSession(sessionId: Int): Flow<List<ExerciseLog>>
 
+    @Query("SELECT * FROM ExerciseLog WHERE sessionId IN (:sessionIds)")
+    suspend fun getLogsForSessions(sessionIds: List<Int>): List<ExerciseLog>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(exerciseLog: ExerciseLog): Long
 

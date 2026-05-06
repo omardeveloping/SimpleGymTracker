@@ -47,6 +47,14 @@ class WorkoutRepository(
         return setDao.getSetsForLog(logId)
     }
 
+    suspend fun getSetsForLogs(logIds: List<Int>): List<Set> {
+        return setDao.getSetsForLogs(logIds)
+    }
+
+    suspend fun getLogsForSessions(sessionIds: List<Int>): List<ExerciseLog> {
+        return logDao.getLogsForSessions(sessionIds)
+    }
+
     suspend fun getLastSetForExercise(exerciseId: Int): Set? {
         return setDao.getLastSetForExercise(exerciseId)
     }
