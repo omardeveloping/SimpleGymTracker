@@ -58,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -85,6 +86,7 @@ import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModel
 import com.example.simplegymtracker.ui.viewmodel.ExerciseViewModelFactory
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModel
 import com.example.simplegymtracker.ui.viewmodel.WorkoutViewModelFactory
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -689,15 +691,27 @@ private fun FinishWorkoutDialog(
     onConfirm: () -> Unit
 ) {
     val logs by workoutViewModel.getLogsForSession(sessionId).collectAsState(initial = emptyList())
-    var totalSets = 0
-    var completedSets = 0
 
-    for (log in logs) {
-        val sets by workoutViewModel.getSetsForLog(log.exerciseLogId).collectAsState(initial = emptyList())
-        totalSets += sets.size
-        completedSets += sets.count { it.isCompleted }
+    val workoutStats = produceState(initialValue = Pair(0, 0), logs) {
+        if (logs.isEmpty()) {
+            value = Pair(0, 0)
+            return@produceState
+        }
+
+        var totalSets = 0
+        var completedSets = 0
+
+        for (log in logs) {
+            val sets = workoutViewModel.getSetsForLog(log.exerciseLogId).first()
+            totalSets += sets.size
+            completedSets += sets.count { it.isCompleted }
+        }
+
+        value = Pair(totalSets, completedSets)
     }
 
+    val totalSets = workoutStats.value.first
+    val completedSets = workoutStats.value.second
     val completionRate = if (totalSets > 0) (completedSets * 100 / totalSets) else 0
     val hasNoSets = totalSets == 0
     val lowCompletion = completionRate < 50
