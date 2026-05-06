@@ -15,6 +15,9 @@ interface ExerciseDao {
     @Query("SELECT * FROM Exercise WHERE equipment = :equipment")
     fun getExercisesByEquipment(equipment: String): Flow<List<Exercise>>
 
+    @Query("SELECT * FROM Exercise WHERE exerciseId = :exerciseId")
+    suspend fun getExerciseById(exerciseId: Int): Exercise?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(exercise: Exercise)
 

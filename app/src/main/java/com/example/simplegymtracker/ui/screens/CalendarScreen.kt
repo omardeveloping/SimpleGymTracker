@@ -37,6 +37,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -136,7 +137,11 @@ private fun WeekView(
 ) {
     var currentWeekStart by remember { mutableLongStateOf(getStartOfWeek(System.currentTimeMillis())) }
 
-    val sessions by workoutViewModel.getSessionsForWeek(currentWeekStart).collectAsState()
+    val sessions by workoutViewModel.weekSessions.collectAsState()
+
+    LaunchedEffect(currentWeekStart) {
+        workoutViewModel.loadSessionsForWeek(currentWeekStart)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -206,7 +211,11 @@ private fun MonthView(
     var currentYear by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.YEAR)) }
     var currentMonth by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MONTH) + 1) }
 
-    val sessions by workoutViewModel.getSessionsForMonth(currentYear, currentMonth).collectAsState()
+    val sessions by workoutViewModel.monthSessions.collectAsState()
+
+    LaunchedEffect(currentYear, currentMonth) {
+        workoutViewModel.loadSessionsForMonth(currentYear, currentMonth)
+    }
 
     val daysInMonth = Calendar.getInstance().apply {
         set(currentYear, currentMonth - 1, 1)

@@ -7,11 +7,36 @@ import com.example.simplegymtracker.data.entity.ExerciseLog
 import com.example.simplegymtracker.data.entity.Session
 import com.example.simplegymtracker.data.entity.Set
 import com.example.simplegymtracker.data.repository.WorkoutRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
+
+data class SessionStats(
+    val totalExercises: Int = 0,
+    val totalSets: Int = 0,
+    val totalVolume: Float = 0f,
+    val totalReps: Int = 0,
+    val completedSets: Int = 0
+)
+
+data class WeeklyStats(
+    val totalSessions: Int = 0,
+    val totalSets: Int = 0,
+    val totalVolume: Float = 0f
+)
+
+data class MonthlyStats(
+    val totalSessions: Int = 0,
+    val totalSets: Int = 0,
+    val totalVolume: Float = 0f,
+    val topExercise: String? = null,
+    val topExerciseCount: Int = 0
+)
 
 class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
 
@@ -21,6 +46,45 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _weekSessions = MutableStateFlow<List<Session>>(emptyList())
+    val weekSessions: StateFlow<List<Session>> = _weekSessions.asStateFlow()
+
+    private val _monthSessions = MutableStateFlow<List<Session>>(emptyList())
+    val monthSessions: StateFlow<List<Session>> = _monthSessions.asStateFlow()
+
+    private var weekCollectionJob: kotlinx.coroutines.Job? = null
+    private var monthCollectionJob: kotlinx.coroutines.Job? = null
+
+    fun loadSessionsForWeek(startOfWeek: Long) {
+        weekCollectionJob?.cancel()
+        weekCollectionJob = viewModelScope.launch {
+            val endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000L) - 1
+            repository.getSessionsBetweenDates(startOfWeek, endOfWeek)
+                .collect { sessions ->
+                    _weekSessions.value = sessions
+                }
+        }
+    }
+
+    fun loadSessionsForMonth(year: Int, month: Int) {
+        monthCollectionJob?.cancel()
+        monthCollectionJob = viewModelScope.launch {
+            val calendar = Calendar.getInstance().apply {
+                set(year, month - 1, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfMonth = calendar.timeInMillis
+            calendar.add(Calendar.MONTH, 1)
+            calendar.add(Calendar.MILLISECOND, -1)
+            val endOfMonth = calendar.timeInMillis
+
+            repository.getSessionsBetweenDates(startOfMonth, endOfMonth)
+                .collect { sessions ->
+                    _monthSessions.value = sessions
+                }
+        }
+    }
 
     fun startNewSession(userId: Int, onSessionCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
@@ -131,25 +195,92 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         }
     }
 
-    fun getSessionsForWeek(startOfWeek: Long): StateFlow<List<Session>> {
-        val endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000L) - 1
+    fun getSessionStats(sessionId: Int, onResult: (SessionStats) -> Unit) {
+        viewModelScope.launch {
+            val logs = repository.getLogsForSession(sessionId).first()
+            val totalExercises = logs.size
+            var totalSets = 0
+            var totalVolume = 0f
+            var totalReps = 0
+            var completedSets = 0
+
+            for (log in logs) {
+                val sets = repository.getSetsForLog(log.exerciseLogId).first()
+                totalSets += sets.size
+                for (set in sets) {
+                    totalVolume += set.weight * set.repetitions
+                    totalReps += set.repetitions
+                    if (set.isCompleted) completedSets++
+                }
+            }
+
+            onResult(
+                SessionStats(
+                    totalExercises = totalExercises,
+                    totalSets = totalSets,
+                    totalVolume = totalVolume,
+                    totalReps = totalReps,
+                    completedSets = completedSets
+                )
+            )
+        }
+    }
+
+    fun getWeeklyStats(): StateFlow<WeeklyStats> {
+        val calendar = Calendar.getInstance()
+        val endOfWeek = calendar.timeInMillis
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfWeek = calendar.timeInMillis
+
         return repository.getSessionsBetweenDates(startOfWeek, endOfWeek)
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+            .let { flow ->
+                MutableStateFlow(WeeklyStats()).also { resultFlow ->
+                    viewModelScope.launch {
+                        flow.collect { sessions ->
+                            var totalSessions = sessions.size
+                            var totalSets = 0
+                            var totalVolume = 0f
+
+                            for (session in sessions) {
+                                val logs = repository.getLogsForSession(session.sessionId).first()
+                                for (log in logs) {
+                                    val sets = repository.getSetsForLog(log.exerciseLogId).first()
+                                    totalSets += sets.size
+                                    for (set in sets) {
+                                        totalVolume += set.weight * set.repetitions
+                                    }
+                                }
+                            }
+
+                            resultFlow.value = WeeklyStats(
+                                totalSessions = totalSessions,
+                                totalSets = totalSets,
+                                totalVolume = totalVolume
+                            )
+                        }
+                    }
+                }
+            }
     }
 
-    fun getSessionsForMonth(year: Int, month: Int): StateFlow<List<Session>> {
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(year, month - 1, 1, 0, 0, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val startOfMonth = calendar.timeInMillis
-        calendar.add(java.util.Calendar.MONTH, 1)
-        calendar.add(java.util.Calendar.MILLISECOND, -1)
+    fun getMonthlyStats(): StateFlow<MonthlyStats> {
+        val calendar = Calendar.getInstance()
         val endOfMonth = calendar.timeInMillis
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfMonth = calendar.timeInMillis
 
         return repository.getSessionsBetweenDates(startOfMonth, endOfMonth)
             .stateIn(
@@ -157,6 +288,49 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+            .let { flow ->
+                MutableStateFlow(MonthlyStats()).also { resultFlow ->
+                    viewModelScope.launch {
+                        flow.collect { sessions ->
+                            var totalSessions = sessions.size
+                            var totalSets = 0
+                            var totalVolume = 0f
+                            val exerciseCounts = mutableMapOf<String, Int>()
+
+                            for (session in sessions) {
+                                val logs = repository.getLogsForSession(session.sessionId).first()
+                                for (log in logs) {
+                                    val sets = repository.getSetsForLog(log.exerciseLogId).first()
+                                    totalSets += sets.size
+                                    for (set in sets) {
+                                        totalVolume += set.weight * set.repetitions
+                                    }
+                                    val exercise = repository.getExerciseById(log.exerciseId)
+                                    exercise?.let {
+                                        exerciseCounts[it.name ?: "Unknown"] = exerciseCounts.getOrDefault(it.name ?: "Unknown", 0) + 1
+                                    }
+                                }
+                            }
+
+                            val topExercise = exerciseCounts.maxByOrNull { it.value }
+
+                            resultFlow.value = MonthlyStats(
+                                totalSessions = totalSessions,
+                                totalSets = totalSets,
+                                totalVolume = totalVolume,
+                                topExercise = topExercise?.key,
+                                topExerciseCount = topExercise?.value ?: 0
+                            )
+                        }
+                    }
+                }
+            }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        weekCollectionJob?.cancel()
+        monthCollectionJob?.cancel()
     }
 }
 

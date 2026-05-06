@@ -91,6 +91,7 @@ fun ActiveWorkoutScreen(
     onAddExercise: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToTimer: () -> Unit,
+    onFinishWorkout: () -> Unit,
     preferredUnit: String = "kg"
 ) {
     val workoutViewModel: WorkoutViewModel = viewModel(factory = workoutViewModelFactory)
@@ -110,9 +111,22 @@ fun ActiveWorkoutScreen(
             GymTrackerAppBar(
                 title = "Active Workout",
                 onNavigateBack = onNavigateBack,
-                actionIcon = Icons.Default.Timer,
-                actionContentDescription = "Timer",
-                onActionClick = onNavigateToTimer
+                actions = {
+                    IconButton(onClick = onNavigateToTimer) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "Timer",
+                            tint = ElectricBlue
+                        )
+                    }
+                    IconButton(onClick = onFinishWorkout) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Finish Workout",
+                            tint = SetComplete
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {

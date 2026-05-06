@@ -31,6 +31,7 @@ import com.example.simplegymtracker.ui.screens.CalendarScreen
 import com.example.simplegymtracker.ui.screens.ExerciseSelectorScreen
 import com.example.simplegymtracker.ui.screens.HomeScreen
 import com.example.simplegymtracker.ui.screens.ProgressChartScreen
+import com.example.simplegymtracker.ui.screens.SessionSummaryScreen
 import com.example.simplegymtracker.ui.screens.SessionHistoryScreen
 import com.example.simplegymtracker.ui.screens.TimerConfigScreen
 import com.example.simplegymtracker.ui.theme.SimpleGymTrackerTheme
@@ -51,7 +52,8 @@ class MainActivity : ComponentActivity() {
         val workoutRepository = WorkoutRepository(
             db.sessionDao(),
             db.exerciseLogDao(),
-            db.setDao()
+            db.setDao(),
+            db.exerciseDao()
         )
 
         val userViewModelFactory = UserViewModelFactory(userRepository)
@@ -213,6 +215,9 @@ fun AppNavHost(
                 },
                 onNavigateToTimer = {
                     navController.navigate(Screen.TimerConfig.route)
+                },
+                onFinishWorkout = {
+                    navController.navigate(Screen.SessionSummary.createRoute(sessionId))
                 }
             )
         }
@@ -283,6 +288,31 @@ fun AppNavHost(
                 },
                 onNavigateBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = Screen.SessionSummary.route,
+            enterTransition = { enterTransition },
+            exitTransition = { exitTransition },
+            popEnterTransition = { popEnterTransition },
+            popExitTransition = { popExitTransition }
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments
+                ?.getString("sessionId")
+                ?.toLongOrNull() ?: 0L
+
+            SessionSummaryScreen(
+                sessionId = sessionId,
+                workoutViewModelFactory = workoutViewModelFactory,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
                 }
             )
         }

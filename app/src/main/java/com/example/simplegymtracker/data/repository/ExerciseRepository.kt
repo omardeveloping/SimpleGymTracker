@@ -16,6 +16,10 @@ class ExerciseRepository(private val exerciseDao: ExerciseDao) {
         return exerciseDao.getExercisesByEquipment(equipment)
     }
 
+    suspend fun getExerciseById(exerciseId: Int): Exercise? {
+        return exerciseDao.getExerciseById(exerciseId)
+    }
+
     suspend fun insert(exercise: Exercise) {
         exerciseDao.insert(exercise)
     }

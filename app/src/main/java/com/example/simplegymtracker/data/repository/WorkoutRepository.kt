@@ -1,5 +1,6 @@
 package com.example.simplegymtracker.data.repository
 
+import com.example.simplegymtracker.data.dao.ExerciseDao
 import com.example.simplegymtracker.data.dao.ExerciseLogDao
 import com.example.simplegymtracker.data.dao.SessionDao
 import com.example.simplegymtracker.data.dao.SetDao
@@ -12,7 +13,8 @@ import kotlinx.coroutines.flow.first
 class WorkoutRepository(
     private val sessionDao: SessionDao,
     private val logDao: ExerciseLogDao,
-    private val setDao: SetDao
+    private val setDao: SetDao,
+    private val exerciseDao: ExerciseDao
 ) {
 
     val allSessions: Flow<List<Session>> = sessionDao.getAll()
@@ -64,6 +66,8 @@ class WorkoutRepository(
     suspend fun deleteSet(set: Set) {
         setDao.delete(set)
     }
+
+    suspend fun getExerciseById(exerciseId: Int) = exerciseDao.getExerciseById(exerciseId)
 
     suspend fun copySession(sessionId: Int, newUserId: Int): Long {
         val sourceLogs = logDao.getLogsForSession(sessionId).first()
